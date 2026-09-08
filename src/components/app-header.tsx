@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { AdminEntry } from "@/components/admin-entry";
 import { buttonVariants } from "@/components/ui/button";
-import { IconBook, IconPodium } from "@/components/candy-icons";
+import { IconBook, IconPodium, MISSION_ICONS } from "@/components/candy-icons";
 import { ProgressDots } from "@/components/progress-dots";
 import { useStudent } from "@/lib/student-context";
-import { BOOK } from "@/content/book";
+import { BOOK, MISSIONS } from "@/content/book";
+import { MISSION_IDS } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export function AppHeader({
@@ -17,7 +18,7 @@ export function AppHeader({
   /** 오른쪽 위에 "QR 없이 들어가기"(관리자 암호) 버튼을 둔다 — 학생 홈에서만 쓴다. */
   adminEntry?: boolean;
 }) {
-  const { student } = useStudent();
+  const { student, mode, signOut } = useStudent();
   return (
     <header className="no-print sticky top-0 z-30 bg-card">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-3 px-4">
@@ -32,10 +33,16 @@ export function AppHeader({
         </Link>
         <div className="flex shrink-0 items-center gap-2">
           {student && (
-            <div className="flex items-center gap-2 rounded-full bg-candy-blue py-1 pr-3 pl-3.5 text-sm font-bold text-ink sticker-xs sm:pr-1.5">
+            <button
+              type="button"
+              onClick={signOut}
+              title={mode === "guest" ? "게스트 나가기" : "학생 바꾸기"}
+              className="flex items-center gap-2 rounded-full bg-candy-blue py-1 pr-3 pl-3.5 text-sm font-bold text-ink sticker-xs sticker-press sm:pr-2"
+            >
               <span className="max-w-20 truncate">{student.name}</span>
-              <ProgressDots student={student} size="sm" className="hidden sm:flex" />
-            </div>
+              {mode === "student" && <ProgressDots student={student} size="sm" className="hidden sm:flex" />}
+              <span className="hidden text-xs font-medium text-ink/60 sm:inline">바꾸기</span>
+            </button>
           )}
           {showBoardLink && (
             <Link
@@ -50,6 +57,23 @@ export function AppHeader({
           {adminEntry && <AdminEntry />}
         </div>
       </div>
+      {mode === "guest" && (
+        <nav className="mx-auto flex w-full max-w-3xl gap-2 overflow-x-auto px-4 pb-3" aria-label="게스트 게임 선택">
+          {MISSION_IDS.map((id) => {
+            const Icon = MISSION_ICONS[MISSIONS[id].icon];
+            return (
+              <Link
+                key={id}
+                href={`/mission/${id}`}
+                className="flex min-w-max flex-1 items-center justify-center gap-1.5 rounded-full bg-candy-cream px-3 py-1.5 text-xs font-bold text-ink sticker-xs sticker-press sm:text-sm"
+              >
+                <Icon className="size-4" />
+                게임 {id}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
       {/* 사탕 줄무늬 띠 — 밋밋한 1px 보더 대신 */}
       <div className="candy-stripe h-2 border-y-[2.5px] border-ink" />
     </header>

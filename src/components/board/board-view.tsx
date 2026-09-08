@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { IconArrow, IconMedal, IconUsers } from "@/components/candy-icons";
+import { IconArrow, IconMedal, IconUsers, MISSION_ICONS } from "@/components/candy-icons";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { MyMissions } from "@/components/board/my-missions";
 import { ProgressDots } from "@/components/progress-dots";
 import { useStudent } from "@/lib/student-context";
-import { BOOK } from "@/content/book";
+import { BOOK, MISSIONS } from "@/content/book";
 import { completedCount, isCleared, MISSION_IDS, type StudentRecord } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +28,7 @@ function sortStudents(list: StudentRecord[]): StudentRecord[] {
  * 반 전체 현황은 아래에 접힌 채로 두고 필요할 때만 펼친다.
  */
 export function BoardView() {
-  const { student } = useStudent();
+  const { student, mode } = useStudent();
   const [students, setStudents] = useState<StudentRecord[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
@@ -57,7 +57,7 @@ export function BoardView() {
 
   const list = students ?? [];
   // 서버 기록이 있으면 그쪽이 최신, 없으면 로컬 정보로라도 내 진행을 보여 준다.
-  const mine = student ? (list.find((s) => s.id === student.id) ?? student) : null;
+  const mine = mode === "student" && student ? (list.find((s) => s.id === student.id) ?? student) : null;
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-5 sm:py-8">
@@ -69,7 +69,7 @@ export function BoardView() {
         </p>
       </div>
 
-      {mine ? <MyMissions student={mine} /> : <JoinPrompt />}
+      {mine ? <MyMissions student={mine} /> : mode === "guest" ? <GuestPrompt /> : <JoinPrompt />}
 
       {/* 내 기록과 반 현황을 가르는 사탕 띠 */}
       <div className="candy-stripe my-7 h-3 rounded-full border-[2.5px] border-ink sm:my-9" />
@@ -85,18 +85,38 @@ export function BoardView() {
   );
 }
 
-/** 이름을 아직 입력하지 않은 태블릿 — 내 기록 자리에 무엇을 해야 하는지 알려 준다. */
+/** 로그인하지 않은 태블릿 — 학생 선택 화면으로 안내한다. */
 function JoinPrompt() {
   return (
     <section className="rounded-3xl bg-candy-cream p-6 sticker sm:p-8">
       <h1 className="font-heading text-4xl leading-tight sm:text-5xl">내 미션 카드</h1>
       <p className="mt-3 text-lg leading-relaxed text-ink/75">
-        이름을 입력하고 미션을 시작하면, 내가 푼 퀴즈와 내가 쓴 일기가 여기에 모여요.
+        내 이름을 고르고 미션을 시작하면, 내가 푼 퀴즈와 내가 쓴 일기가 여기에 모여요.
       </p>
       <Link href="/" className={cn(buttonVariants({ size: "xl" }), "mt-5 w-full sm:w-auto")}>
-        이름 입력하고 시작하기
+        학생 로그인하기
         <IconArrow data-icon="inline-end" />
       </Link>
+    </section>
+  );
+}
+
+function GuestPrompt() {
+  return (
+    <section className="rounded-3xl bg-candy-blue p-6 sticker sm:p-8">
+      <h1 className="font-heading text-4xl leading-tight sm:text-5xl">우리 반 미션 보기</h1>
+      <p className="mt-3 text-lg leading-relaxed text-ink/75">친구들의 진행을 살펴보고, 원하는 게임을 직접 체험해 보세요.</p>
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        {MISSION_IDS.map((id) => {
+          const Icon = MISSION_ICONS[MISSIONS[id].icon];
+          return (
+            <Link key={id} href={`/mission/${id}`} className={cn(buttonVariants({ variant: "outline", size: "lg" }), "bg-card")}>
+              <Icon data-icon="inline-start" />
+              게임 {id}
+            </Link>
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -157,7 +177,7 @@ function ClassSection({
             <p className="text-sm text-muted-foreground">불러오는 중…</p>
           ) : list.length === 0 ? (
             <p className="rounded-2xl border-[2.5px] border-dashed border-ink/35 p-5 text-center text-sm text-muted-foreground">
-              아직 참여한 친구가 없어요. QR을 찍고 이름을 입력하면 여기에 나타나요.
+              아직 참여한 친구가 없어요. QR을 찍고 학생 로그인을 하면 여기에 나타나요.
             </p>
           ) : (
             <ul className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">

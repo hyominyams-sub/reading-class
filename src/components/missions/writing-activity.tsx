@@ -22,6 +22,7 @@ export type WritingResult = {
 type Props = {
   config: WritingConfig;
   studentName: string;
+  isGuest?: boolean;
   onComplete: (result: WritingResult) => void;
 };
 
@@ -36,7 +37,7 @@ function countChars(text: string) {
   return text.replace(/\s/g, "").length;
 }
 
-export function WritingActivity({ config, studentName, onComplete }: Props) {
+export function WritingActivity({ config, studentName, isGuest = false, onComplete }: Props) {
   const [step, setStep] = useState(0);
   const [sceneId, setSceneId] = useState<string | null>(null);
   const [feelings, setFeelings] = useState<string[]>([]);
@@ -262,8 +263,10 @@ export function WritingActivity({ config, studentName, onComplete }: Props) {
 
       {step === 3 && scene && (
         <section className="animate-in fade-in">
-          <h1 className="font-heading text-3xl">이렇게 제출할까요?</h1>
-          <p className="mt-1 text-muted-foreground">제출하면 선생님이 읽어 볼 수 있어요.</p>
+          <h1 className="font-heading text-3xl">{isGuest ? "이대로 완성할까요?" : "이렇게 제출할까요?"}</h1>
+          <p className="mt-1 text-muted-foreground">
+            {isGuest ? "게스트 일기를 완성해요. 체험 기록은 선생님께 제출되지 않아요." : "제출하면 선생님이 읽어 볼 수 있어요."}
+          </p>
           <article className="mt-4 overflow-hidden rounded-3xl bg-card sticker">
             <div className="aspect-[21/9]">
               <SceneIllustration scene={scene.scene} className="h-full w-full" />
@@ -288,7 +291,8 @@ export function WritingActivity({ config, studentName, onComplete }: Props) {
               <IconArrowLeft data-icon="inline-start" /> 고치기
             </Button>
             <Button size="lg" className="flex-1" onClick={submit}>
-              <IconSend data-icon="inline-start" /> 제출하기
+              {isGuest ? <IconCheck data-icon="inline-start" /> : <IconSend data-icon="inline-start" />}
+              {isGuest ? "완료하기" : "제출하기"}
             </Button>
           </div>
         </section>

@@ -1,19 +1,25 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { isClassStudentName } from "./class-roster";
 import type { MissionId, StudentRecord } from "./types";
 
 const STORAGE_KEY = "reading-class:student";
+const SESSION_MODE_KEY = "reading-class:session-mode";
+const GUEST_PROGRESS_KEY = "reading-class:guest-progress";
 
-type Stored = { id: string; name: string };
+type Stored = { id: string; name: string; rosterConfirmed: true };
 type Status = "loading" | "anonymous" | "ready";
+export type IdentityMode = "anonymous" | "student" | "guest";
 
 type StudentContextValue = {
   student: StudentRecord | null;
   status: Status;
+  mode: IdentityMode;
   /** 등록이 뒤늦게 실패했을 때의 사유. 이름 화면으로 되돌아오며 이 문장을 보여 준다. */
   registerError: string | null;
   register: (name: string) => Promise<void>;
+  enterGuest: () => void;
   refresh: () => Promise<void>;
   complete: (mission: MissionId, score: number, details?: Record<string, unknown>) => Promise<StudentRecord>;
   signOut: () => void;
@@ -26,13 +32,42 @@ function readStored(): Stored | null {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<Stored>;
-    if (typeof parsed.id === "string" && typeof parsed.name === "string") {
-      return { id: parsed.id, name: parsed.name };
+    if (
+      typeof parsed.id === "string" &&
+      typeof parsed.name === "string" &&
+      parsed.rosterConfirmed === true &&
+      isClassStudentName(parsed.name)
+    ) {
+      return { id: parsed.id, name: parsed.name, rosterConfirmed: true };
     }
+    window.localStorage.removeItem(STORAGE_KEY);
   } catch {
     /* localStorage를 쓸 수 없는 환경 */
   }
   return null;
+}
+
+function makeGuest(missions: StudentRecord["missions"] = {}): StudentRecord {
+  return { id: "guest", name: "게스트", createdAt: "", missions };
+}
+
+function readGuest(): StudentRecord {
+  try {
+    const raw = window.sessionStorage.getItem(GUEST_PROGRESS_KEY);
+    if (raw) return makeGuest(JSON.parse(raw) as StudentRecord["missions"]);
+  } catch {
+    /* sessionStorage를 쓸 수 없는 환경 */
+  }
+  return makeGuest();
+}
+
+function writeSessionMode(mode: "student" | "guest" | null) {
+  try {
+    if (mode) window.sessionStorage.setItem(SESSION_MODE_KEY, mode);
+    else window.sessionStorage.removeItem(SESSION_MODE_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 function writeStored(value: Stored | null) {
@@ -56,14 +91,29 @@ async function readError(res: Response, fallback: string): Promise<string> {
 export function StudentProvider({ children }: { children: React.ReactNode }) {
   const [student, setStudent] = useState<StudentRecord | null>(null);
   const [status, setStatus] = useState<Status>("loading");
+  const [mode, setMode] = useState<IdentityMode>("anonymous");
   const [registerError, setRegisterError] = useState<string | null>(null);
   /** 아직 서버 응답을 기다리는 등록. 미션을 저장하려면 여기서 나온 아이디가 필요하다. */
   const pendingRegister = useRef<Promise<StudentRecord> | null>(null);
+  /** 로그아웃·게스트 전환 뒤 늦게 도착한 요청이 현재 사용자를 덮지 못하게 한다. */
+  const sessionGeneration = useRef(0);
 
   const refresh = useCallback(async () => {
+    const generation = sessionGeneration.current;
+    try {
+      if (window.sessionStorage.getItem(SESSION_MODE_KEY) === "guest") {
+        setStudent(readGuest());
+        setMode("guest");
+        setStatus("ready");
+        return;
+      }
+    } catch {
+      /* sessionStorage를 쓸 수 없는 환경 */
+    }
     const stored = readStored();
     if (!stored) {
       setStudent(null);
+      setMode("anonymous");
       setStatus("anonymous");
       return;
     }
@@ -71,19 +121,29 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch(`/api/students/${encodeURIComponent(stored.id)}`, { cache: "no-store" });
       if (res.status === 404) {
         // 서버가 초기화된 경우: 다시 이름을 입력하도록 한다.
-        writeStored(null);
-        setStudent(null);
-        setStatus("anonymous");
+        if (sessionGeneration.current === generation) {
+          writeStored(null);
+          writeSessionMode(null);
+          setStudent(null);
+          setMode("anonymous");
+          setStatus("anonymous");
+        }
         return;
       }
       if (!res.ok) throw new Error("fetch failed");
       const data = (await res.json()) as { student: StudentRecord };
-      setStudent(data.student);
-      setStatus("ready");
+      if (sessionGeneration.current === generation) {
+        setStudent(data.student);
+        setMode("student");
+        setStatus("ready");
+      }
     } catch {
       // 네트워크가 잠시 끊겨도 앱은 계속 쓸 수 있게 로컬 정보로 버틴다.
-      setStudent((prev) => prev ?? { id: stored.id, name: stored.name, createdAt: "", missions: {} });
-      setStatus("ready");
+      if (sessionGeneration.current === generation) {
+        setStudent((prev) => prev ?? { id: stored.id, name: stored.name, createdAt: "", missions: {} });
+        setMode("student");
+        setStatus("ready");
+      }
     }
   }, []);
 
@@ -101,11 +161,30 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
    * `complete`가 등록이 끝날 때까지 기다린다.
    */
   const register = useCallback(async (name: string) => {
+    if (!isClassStudentName(name)) throw new Error("명단에서 이름을 다시 골라 주세요.");
+    const generation = ++sessionGeneration.current;
+    writeStored(null);
+    writeSessionMode("student");
     setRegisterError(null);
     setStudent({ id: "", name, createdAt: "", missions: {} });
+    setMode("student");
     setStatus("ready");
 
     const task = (async () => {
+      // 다른 태블릿에서도 같은 이름의 기존 기록을 이어서 쓴다.
+      const listRes = await fetch("/api/students", { cache: "no-store" });
+      if (listRes.ok) {
+        const listData = (await listRes.json()) as { students: StudentRecord[] };
+        const existing = listData.students.find((record) => record.name === name);
+        if (existing) {
+          if (sessionGeneration.current === generation) {
+            writeStored({ id: existing.id, name: existing.name, rosterConfirmed: true });
+            setStudent(existing);
+          }
+          return existing;
+        }
+      }
+      if (sessionGeneration.current !== generation) throw new Error("로그인이 바뀌었어요.");
       const res = await fetch("/api/students", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -113,8 +192,10 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       });
       if (!res.ok) throw new Error(await readError(res, "등록에 실패했어요. 다시 시도해 주세요."));
       const data = (await res.json()) as { student: StudentRecord };
-      writeStored({ id: data.student.id, name: data.student.name });
-      setStudent(data.student);
+      if (sessionGeneration.current === generation) {
+        writeStored({ id: data.student.id, name: data.student.name, rosterConfirmed: true });
+        setStudent(data.student);
+      }
       return data.student;
     })();
 
@@ -123,16 +204,54 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
     task.catch((error: unknown) => {
       // 조용히 넘어가면 아이가 미션을 다 풀고 나서야 기록이 없다는 걸 알게 된다.
       // 이름 화면으로 되돌리고 이유를 보여 준다.
-      if (pendingRegister.current !== task) return;
+      if (pendingRegister.current !== task || sessionGeneration.current !== generation) return;
       setRegisterError(error instanceof Error ? error.message : "등록에 실패했어요. 다시 시도해 주세요.");
+      writeStored(null);
+      writeSessionMode(null);
       setStudent(null);
+      setMode("anonymous");
       setStatus("anonymous");
     });
+  }, []);
+
+  const enterGuest = useCallback(() => {
+    ++sessionGeneration.current;
+    pendingRegister.current = null;
+    writeStored(null);
+    writeSessionMode("guest");
+    setRegisterError(null);
+    setStudent(readGuest());
+    setMode("guest");
+    setStatus("ready");
   }, []);
 
   const complete = useCallback(
     async (mission: MissionId, score: number, details?: Record<string, unknown>) => {
       if (!student) throw new Error("학생 정보가 없어요.");
+      const generation = sessionGeneration.current;
+
+      if (mode === "guest") {
+        const previous = student.missions[mission];
+        const updated: StudentRecord = {
+          ...student,
+          missions: {
+            ...student.missions,
+            [mission]: {
+              completedAt: new Date().toISOString(),
+              score,
+              attempts: (previous?.attempts ?? 0) + 1,
+              details,
+            },
+          },
+        };
+        try {
+          window.sessionStorage.setItem(GUEST_PROGRESS_KEY, JSON.stringify(updated.missions));
+        } catch {
+          /* ignore */
+        }
+        if (sessionGeneration.current === generation) setStudent(updated);
+        return updated;
+      }
 
       // 등록이 아직 날아가는 중이면 아이디가 없다. 끝날 때까지 기다린다.
       let studentId = student.id;
@@ -141,6 +260,9 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
         if (!registered) throw new Error("학생 정보가 없어요.");
         studentId = registered.id;
       }
+      if (sessionGeneration.current !== generation || mode !== "student") {
+        throw new Error("로그인이 바뀌었어요.");
+      }
 
       const res = await fetch("/api/progress", {
         method: "POST",
@@ -148,28 +270,41 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ studentId, mission, score, details }),
       });
       if (res.status === 404) {
-        writeStored(null);
-        setStudent(null);
-        setStatus("anonymous");
-        throw new Error("학생 정보가 초기화되었어요. 이름을 다시 입력해 주세요.");
+        if (sessionGeneration.current === generation) {
+          writeStored(null);
+          writeSessionMode(null);
+          setStudent(null);
+          setMode("anonymous");
+          setStatus("anonymous");
+        }
+        throw new Error("학생 정보가 초기화되었어요. 명단에서 이름을 다시 골라 주세요.");
       }
       if (!res.ok) throw new Error(await readError(res, "기록 저장에 실패했어요."));
       const data = (await res.json()) as { student: StudentRecord };
-      setStudent(data.student);
+      if (sessionGeneration.current === generation) setStudent(data.student);
       return data.student;
     },
-    [student],
+    [mode, student],
   );
 
   const signOut = useCallback(() => {
+    ++sessionGeneration.current;
+    pendingRegister.current = null;
     writeStored(null);
+    writeSessionMode(null);
+    try {
+      window.sessionStorage.removeItem(GUEST_PROGRESS_KEY);
+    } catch {
+      /* ignore */
+    }
     setStudent(null);
+    setMode("anonymous");
     setStatus("anonymous");
   }, []);
 
   const value = useMemo<StudentContextValue>(
-    () => ({ student, status, registerError, register, refresh, complete, signOut }),
-    [student, status, registerError, register, refresh, complete, signOut],
+    () => ({ student, status, mode, registerError, register, enterGuest, refresh, complete, signOut }),
+    [student, status, mode, registerError, register, enterGuest, refresh, complete, signOut],
   );
 
   return <StudentContext.Provider value={value}>{children}</StudentContext.Provider>;

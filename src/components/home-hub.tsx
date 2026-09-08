@@ -18,7 +18,7 @@ const MISSION_TONE: Record<MissionId, string> = {
 };
 
 export function HomeHub() {
-  const { student, signOut } = useStudent();
+  const { student, mode, signOut } = useStudent();
   if (!student) return null;
   const done = completedCount(student);
   const cleared = isCleared(student);
@@ -48,19 +48,26 @@ export function HomeHub() {
             </div>
           </details>
 
-          <div className="mt-6 rounded-2xl bg-candy-cream px-4 py-3 sticker-sm">
-            <p className="truncate text-sm font-medium text-muted-foreground">{student.name} 님의 진행</p>
-            <div className="mt-1 flex items-center justify-between gap-3">
-              <p className="font-heading text-xl whitespace-nowrap text-ink">
-                {done}/{MISSION_IDS.length} 완료{cleared && " · 클리어!"}
-              </p>
-              <ProgressDots student={student} size="lg" className="shrink-0" />
+          {mode === "guest" ? (
+            <div className="mt-6 rounded-2xl bg-candy-blue px-4 py-3 sticker-sm">
+              <p className="font-heading text-xl text-ink">게스트로 둘러보는 중</p>
+              <p className="mt-0.5 text-sm text-ink/70">아래 게임을 자유롭게 눌러 체험할 수 있어요.</p>
             </div>
-          </div>
+          ) : (
+            <div className="mt-6 rounded-2xl bg-candy-cream px-4 py-3 sticker-sm">
+              <p className="truncate text-sm font-medium text-muted-foreground">{student.name} 학생의 진행</p>
+              <div className="mt-1 flex items-center justify-between gap-3">
+                <p className="font-heading text-xl whitespace-nowrap text-ink">
+                  {done}/{MISSION_IDS.length} 완료{cleared && " · 클리어!"}
+                </p>
+                <ProgressDots student={student} size="lg" className="shrink-0" />
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
-      <section className="mt-8 rounded-3xl bg-card p-6 text-center sticker sm:p-8">
+      {mode === "student" && <section className="mt-8 rounded-3xl bg-card p-6 text-center sticker sm:p-8">
         <span className="mx-auto grid size-16 place-items-center rounded-2xl border-[3px] border-ink bg-candy-blue text-ink candy-bob tilt-r">
           <IconQr className="size-10" />
         </span>
@@ -70,7 +77,7 @@ export function HomeHub() {
         </p>
         <QrScanButton className="mt-5 w-full" />
         <p className="mt-2 text-xs text-muted-foreground">카메라를 써도 되냐고 물으면 “허용”을 눌러 주세요.</p>
-      </section>
+      </section>}
 
       <div className="mt-8 mb-4 flex items-center gap-2">
         <IconLollipop className="size-7 text-ink candy-bob" />
@@ -79,7 +86,7 @@ export function HomeHub() {
 
       <section className="grid gap-5" aria-label="미션 목록">
         {MISSION_IDS.map((id, i) => (
-          <MissionCard key={id} id={id} student={student} tilt={i % 2 === 0 ? "tilt-l" : "tilt-r"} />
+          <MissionCard key={id} id={id} student={student} guest={mode === "guest"} tilt={i % 2 === 0 ? "tilt-l" : "tilt-r"} />
         ))}
       </section>
 
@@ -89,7 +96,7 @@ export function HomeHub() {
           onClick={signOut}
           className="font-medium text-muted-foreground underline-offset-4 hover:underline"
         >
-          다른 이름으로 시작하기
+          {mode === "guest" ? "게스트 나가기" : "다른 학생으로 시작하기"}
         </button>
         {/* QR 인쇄·교사용은 오른쪽 위 "QR 없이 들어가기"(관리자 암호) 안에 있다. */}
         <Link
@@ -104,12 +111,12 @@ export function HomeHub() {
 }
 
 /** 미션 카드는 안내판이다 — 들어가는 문은 교실에 붙은 QR뿐. */
-function MissionCard({ id, student, tilt }: { id: MissionId; student: StudentRecord; tilt: string }) {
+function MissionCard({ id, student, guest, tilt }: { id: MissionId; student: StudentRecord; guest: boolean; tilt: string }) {
   const info = MISSIONS[id];
   const done = student.missions[id];
   const Icon = MISSION_ICONS[info.icon];
-  return (
-    <article className="flex items-center gap-4 rounded-3xl bg-card p-4 sticker sm:gap-5 sm:p-5">
+  const content = (
+    <>
       <span
         className={cn(
           "grid size-16 shrink-0 place-items-center rounded-2xl border-[3px] border-ink text-ink",
@@ -134,9 +141,16 @@ function MissionCard({ id, student, tilt }: { id: MissionId; student: StudentRec
             done ? "bg-candy-mint" : "bg-candy-cream",
           )}
         >
-          {done ? `완료 · ${done.score}점` : `미션 ${id} QR을 찾아 찍으면 시작!`}
+          {done ? `완료 · ${done.score}점` : guest ? `게임 ${id} 시작하기` : `미션 ${id} QR을 찾아 찍으면 시작!`}
         </span>
       </span>
-    </article>
+    </>
+  );
+  return guest ? (
+    <Link href={`/mission/${id}`} className="flex items-center gap-4 rounded-3xl bg-card p-4 sticker sticker-hover sm:gap-5 sm:p-5">
+      {content}
+    </Link>
+  ) : (
+    <article className="flex items-center gap-4 rounded-3xl bg-card p-4 sticker sm:gap-5 sm:p-5">{content}</article>
   );
 }

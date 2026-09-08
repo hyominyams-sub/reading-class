@@ -30,7 +30,7 @@ type Props = {
 
 /** 미션 공통 틀: 도입(설명) → 활동 → 완료 화면. 완료 시 서버에 기록한다. */
 export function MissionFrame({ mission, scene, howTo, summary, children }: Props) {
-  const { student, complete } = useStudent();
+  const { student, mode, complete } = useStudent();
   const [phase, setPhase] = useState<"intro" | "play" | "done">("intro");
   const [outcome, setOutcome] = useState<MissionOutcome | null>(null);
   const [runKey, setRunKey] = useState(0);
@@ -107,7 +107,12 @@ export function MissionFrame({ mission, scene, howTo, summary, children }: Props
             </div>
           )}
           <div className="mt-8 flex flex-col gap-3">
-            {next ? (
+            {next && mode === "guest" ? (
+              <Link href={`/mission/${next}`} className={cn(buttonVariants({ size: "xl" }))}>
+                다음 게임 하기
+                <IconArrow data-icon="inline-end" />
+              </Link>
+            ) : next ? (
               <>
                 <p className="leading-relaxed text-muted-foreground">
                   다음은{" "}
@@ -125,7 +130,7 @@ export function MissionFrame({ mission, scene, howTo, summary, children }: Props
               </Link>
             )}
             <div className="flex gap-3">
-              {next && (
+              {next && mode === "student" && (
                 <Link href="/board" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "flex-1")}>
                   <IconPodium data-icon="inline-start" />
                   결과 보기

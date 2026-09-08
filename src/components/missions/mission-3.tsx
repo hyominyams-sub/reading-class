@@ -6,20 +6,20 @@ import { WritingActivity, type WritingResult } from "@/components/missions/writi
 import { useStudent } from "@/lib/student-context";
 import { WRITING } from "@/content/book";
 
-const HOW_TO = [
-  "이야기 속 장면 하나를 골라요.",
-  "그때 인물의 마음에 어울리는 감정 낱말을 1~3개 골라요.",
-  `인물이 되어 일기를 써요. 공백을 빼고 ${WRITING.minChars}자 이상이면 제출할 수 있어요.`,
-];
-
 export function Mission3() {
-  const { student } = useStudent();
+  const { student, mode } = useStudent();
+  const isGuest = mode === "guest";
+  const howTo = [
+    "이야기 속 장면 하나를 골라요.",
+    "그때 인물의 마음에 어울리는 감정 낱말을 1~3개 골라요.",
+    `인물이 되어 일기를 써요. 공백을 빼고 ${WRITING.minChars}자 이상이면 ${isGuest ? "완성할" : "제출할"} 수 있어요.`,
+  ];
   return (
     <StudentGate>
       <MissionFrame
         mission={3}
         scene="diary-night"
-        howTo={HOW_TO}
+        howTo={howTo}
         summary={(outcome) => {
           const d = outcome.details as Partial<WritingResult> | undefined;
           if (!d?.text) return null;
@@ -37,6 +37,7 @@ export function Mission3() {
           <WritingActivity
             config={WRITING}
             studentName={student?.name ?? ""}
+            isGuest={isGuest}
             onComplete={(result) => complete(result.score, { ...result })}
           />
         )}
