@@ -43,8 +43,10 @@ async function call(action: string, params: Record<string, unknown> = {}): Promi
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token: sheetsApiToken(), action, ...params }),
       cache: "no-store",
-      // 시트 쓰기는 1~2초씩 걸린다. 그래도 안 오면 매달려 있지 말고 끊는다.
-      signal: AbortSignal.timeout(20_000),
+      // 시트 쓰기는 보통 2초지만, 30명이 한꺼번에 등록하면 잠금 줄에서 한참 기다린다.
+      // 짧게 끊으면 저장에 성공한 요청까지 실패로 처리해 아이가 이름을 다시 입력하고
+      // 행이 두 줄 생긴다. 넉넉히 기다린다.
+      signal: AbortSignal.timeout(45_000),
     });
   } catch (error) {
     throw new Error(`시트 API에 연결하지 못했습니다: ${error instanceof Error ? error.message : String(error)}`);
