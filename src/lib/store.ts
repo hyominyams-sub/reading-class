@@ -1,91 +1,81 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
-import { randomBytes } from "node:crypto";
-import type { MissionId, StoreData, StudentRecord } from "./types";
+import { getDataBackend, isReadOnlyDeployment, missingSheetsEnv } from "./data-backend";
+import * as fileStore from "./store-file";
+import * as sheetsStore from "./store-sheets";
+import type { MissionId, StudentRecord } from "./types";
 
 /**
- * 파일 기반 저장소 (data/store.json).
- * 교실에서 교사 노트북 한 대가 서버가 되는 상황을 가정한 단순 구조.
- * 쓰기 작업은 프로세스 안에서 직렬화해 동시 요청에도 파일이 깨지지 않도록 한다.
+ * 학생 기록 저장소.
+ *
+ * 교실에서는 교사 노트북의 `data/store.json`(파일)으로, 배포본에서는 Google 시트로 붙는다.
+ * 어디에 붙을지는 환경 변수만 보고 `data-backend.ts`가 정한다.
  */
-const DATA_DIR = path.join(process.cwd(), "data");
-const FILE = path.join(DATA_DIR, "store.json");
+type StudentStore = {
+  listStudents(): Promise<StudentRecord[]>;
+  getStudent(id: string): Promise<StudentRecord | null>;
+  createStudent(name: string): Promise<StudentRecord>;
+  recordMission(
+    id: string,
+    mission: MissionId,
+    score: number,
+    details?: Record<string, unknown>,
+  ): Promise<StudentRecord | null>;
+  resetStore(): Promise<void>;
+};
 
-let chain: Promise<unknown> = Promise.resolve();
+/**
+ * 저장할 곳 자체가 없는 상태.
+ * `message`는 학생 화면에 그대로 나가고, `detail`은 서버 로그에만 남긴다.
+ */
+export class StoreUnavailableError extends Error {
+  readonly detail: string;
 
-function serialize<T>(task: () => Promise<T>): Promise<T> {
-  const run = chain.then(task, task);
-  chain = run.catch(() => undefined);
-  return run;
-}
-
-async function load(): Promise<StoreData> {
-  try {
-    const raw = await fs.readFile(FILE, "utf8");
-    const parsed = JSON.parse(raw) as Partial<StoreData>;
-    return { students: parsed.students ?? {} };
-  } catch {
-    return { students: {} };
+  constructor(detail: string) {
+    super("학생 기록을 저장할 데이터베이스가 아직 연결되지 않았어요. 선생님께 알려 주세요.");
+    this.name = "StoreUnavailableError";
+    this.detail = detail;
   }
 }
 
-async function save(data: StoreData): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  const tmp = `${FILE}.${process.pid}.${Date.now()}.tmp`;
-  await fs.writeFile(tmp, JSON.stringify(data, null, 2), "utf8");
-  await fs.rename(tmp, FILE);
+function store(): StudentStore {
+  if (getDataBackend() === "sheets") {
+    const missing = missingSheetsEnv();
+    if (missing.length > 0) {
+      throw new StoreUnavailableError(`시트 저장소 환경 변수가 없습니다: ${missing.join(", ")}`);
+    }
+    return sheetsStore;
+  }
+
+  // 배포 환경에서 파일 저장소로 내려앉으면 첫 등록이 EROFS로 죽는다. 미리 막고 이유를 남긴다.
+  if (isReadOnlyDeployment()) {
+    throw new StoreUnavailableError(
+      "배포 환경은 data/store.json에 쓸 수 없습니다. SHEETS_API_URL과 SHEETS_API_TOKEN을 설정하세요.",
+    );
+  }
+
+  return fileStore;
 }
 
-export function newId(): string {
-  return randomBytes(6).toString("base64url");
+export function listStudents(): Promise<StudentRecord[]> {
+  return store().listStudents();
 }
 
-export async function listStudents(): Promise<StudentRecord[]> {
-  const data = await load();
-  return Object.values(data.students).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+export function getStudent(id: string): Promise<StudentRecord | null> {
+  return store().getStudent(id);
 }
 
-export async function getStudent(id: string): Promise<StudentRecord | null> {
-  const data = await load();
-  return data.students[id] ?? null;
+export function createStudent(name: string): Promise<StudentRecord> {
+  return store().createStudent(name);
 }
 
-export async function createStudent(name: string): Promise<StudentRecord> {
-  return serialize(async () => {
-    const data = await load();
-    let id = newId();
-    while (data.students[id]) id = newId();
-    const student: StudentRecord = { id, name, createdAt: new Date().toISOString(), missions: {} };
-    data.students[id] = student;
-    await save(data);
-    return student;
-  });
-}
-
-export async function recordMission(
+export function recordMission(
   id: string,
   mission: MissionId,
   score: number,
   details?: Record<string, unknown>,
 ): Promise<StudentRecord | null> {
-  return serialize(async () => {
-    const data = await load();
-    const student = data.students[id];
-    if (!student) return null;
-    const prev = student.missions[mission];
-    student.missions[mission] = {
-      completedAt: new Date().toISOString(),
-      score: Math.round(score),
-      attempts: (prev?.attempts ?? 0) + 1,
-      details,
-    };
-    await save(data);
-    return student;
-  });
+  return store().recordMission(id, mission, score, details);
 }
 
-export async function resetStore(): Promise<void> {
-  return serialize(async () => {
-    await save({ students: {} });
-  });
+export function resetStore(): Promise<void> {
+  return store().resetStore();
 }

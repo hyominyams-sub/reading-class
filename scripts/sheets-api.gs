@@ -1,0 +1,209 @@
+/**
+ * reading-class 학생 기록 API — 이 스프레드시트를 앱의 데이터베이스로 쓴다.
+ *
+ * 붙이는 법
+ *   1. 시트에서 [확장 프로그램 > Apps Script]를 열고 이 파일 내용을 통째로 붙여넣는다.
+ *   2. 아래 API_TOKEN을 아무도 모르는 문자열로 바꾼다 (앱의 SHEETS_API_TOKEN과 같아야 한다).
+ *   3. [배포 > 새 배포 > 웹 앱] — 실행 계정 '나', 액세스 권한 '모든 사용자' — 배포하고 권한을 승인한다.
+ *   4. 나오는 /exec 주소를 앱의 SHEETS_API_URL에 넣는다.
+ *
+ * 액세스를 '모든 사용자'로 두는 이유는 로그인하지 않은 앱 서버가 부르기 때문이고,
+ * 그래서 토큰이 맞지 않는 요청은 전부 거절한다. 스크립트가 시트 주인 권한으로 돌기 때문에
+ * 시트 자체의 공유 설정은 '제한됨'으로 잠가 두는 편이 안전하다(학생 이름·일기가 들어간다).
+ */
+
+const API_TOKEN = '여기에-토큰을-넣으세요';
+const SHEET_NAME = '기록';
+
+/** A~J열. 앱이 실제로 읽는 값은 마지막 '기록(JSON)'이고 나머지는 사람이 보는 칸이다. */
+const HEADERS = [
+  'id',
+  '이름',
+  '등록시각',
+  '미션1 점수',
+  '미션1 정답',
+  '미션2 점수',
+  '미션3 글자수',
+  '미션3 일기',
+  '완료',
+  '기록(JSON)',
+];
+const COL_ID = 1;
+const COL_NAME = 2;
+const COL_JSON = 10;
+
+/* ------------------------------------------------------------------ 진입점 */
+
+function doPost(e) {
+  try {
+    const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    if (body.token !== API_TOKEN) return json_({ ok: false, error: 'unauthorized' });
+
+    switch (body.action) {
+      case 'list':
+        return json_({ ok: true, students: listStudents_() });
+      case 'get':
+        return json_({ ok: true, student: getStudent_(String(body.id || '')) });
+      case 'create':
+        return json_(createStudent_(String(body.id || ''), String(body.name || '')));
+      case 'record':
+        return json_(recordMission_(String(body.id || ''), String(body.mission || ''), body.score, body.details));
+      case 'reset':
+        return json_(resetAll_());
+      default:
+        return json_({ ok: false, error: 'unknown action: ' + body.action });
+    }
+  } catch (err) {
+    return json_({ ok: false, error: String((err && err.message) || err) });
+  }
+}
+
+/** 브라우저로 열었을 때 배포가 살아 있는지만 알려 준다 */
+function doGet() {
+  return json_({ ok: true, service: 'reading-class sheets api' });
+}
+
+function json_(payload) {
+  return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(ContentService.MimeType.JSON);
+}
+
+/* -------------------------------------------------------------------- 시트 */
+
+function sheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SHEET_NAME);
+  if (!sh) sh = ss.insertSheet(SHEET_NAME);
+  if (sh.getLastRow() < 1) {
+    sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]).setFontWeight('bold');
+    sh.setFrozenRows(1);
+    sh.setColumnWidth(8, 420); // 일기 칸은 넓게
+  }
+  return sh;
+}
+
+/** 헤더를 뺀 데이터 행 전체 */
+function rows_(sh) {
+  const last = sh.getLastRow();
+  if (last < 2) return [];
+  return sh.getRange(2, 1, last - 1, HEADERS.length).getValues();
+}
+
+function toRecord_(row) {
+  let stored = {};
+  try {
+    stored = row[COL_JSON - 1] ? JSON.parse(row[COL_JSON - 1]) : {};
+  } catch (err) {
+    stored = {};
+  }
+  return {
+    id: String(row[COL_ID - 1]),
+    // 이름은 사람이 고칠 수 있게 B열을 그대로 믿는다
+    name: String(row[COL_NAME - 1]),
+    createdAt: stored.createdAt || '',
+    missions: stored.missions || {},
+  };
+}
+
+/** 사람이 보는 칸(D~I)을 미션 기록에서 다시 만든다 */
+function displayCells_(record) {
+  const m = record.missions || {};
+  const m1 = m['1'] || null;
+  const m2 = m['2'] || null;
+  const m3 = m['3'] || null;
+  const d1 = (m1 && m1.details) || {};
+  const d3 = (m3 && m3.details) || {};
+  return [
+    m1 ? m1.score : '',
+    m1 && d1.total ? d1.correct + '/' + d1.total : '',
+    m2 ? m2.score : '',
+    m3 ? d3.chars || '' : '',
+    m3 ? d3.text || '' : '',
+    [m1, m2, m3].filter(Boolean).length,
+  ];
+}
+
+function writeRow_(sh, rowIndex, record) {
+  const values = [record.id, record.name, humanTime_(record.createdAt)]
+    .concat(displayCells_(record))
+    .concat([JSON.stringify({ createdAt: record.createdAt, missions: record.missions })]);
+  sh.getRange(rowIndex, 1, 1, HEADERS.length).setValues([values]);
+}
+
+function humanTime_(iso) {
+  if (!iso) return '';
+  const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone() || 'Asia/Seoul';
+  return Utilities.formatDate(new Date(iso), tz, 'MM/dd HH:mm');
+}
+
+function findRowIndex_(sh, id) {
+  const data = rows_(sh);
+  for (let i = 0; i < data.length; i++) {
+    if (String(data[i][COL_ID - 1]) === id) return { index: i + 2, record: toRecord_(data[i]) };
+  }
+  return null;
+}
+
+/* ------------------------------------------------------------------ 동작들 */
+
+function listStudents_() {
+  return rows_(sheet_())
+    .filter(function (row) {
+      return String(row[COL_ID - 1]);
+    })
+    .map(toRecord_);
+}
+
+function getStudent_(id) {
+  const sh = sheet_();
+  const hit = findRowIndex_(sh, id);
+  return hit ? hit.record : null;
+}
+
+/** 쓰기는 전부 잠금 안에서 — 30대가 동시에 눌러도 행이 겹치지 않게 */
+function withLock_(task) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(25000);
+  try {
+    return task();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function createStudent_(id, name) {
+  if (!id || !name) return { ok: false, error: 'id와 name이 필요합니다.' };
+  return withLock_(function () {
+    const sh = sheet_();
+    if (findRowIndex_(sh, id)) return { ok: false, error: 'duplicate' };
+    const record = { id: id, name: name, createdAt: new Date().toISOString(), missions: {} };
+    writeRow_(sh, sh.getLastRow() + 1, record);
+    return { ok: true, student: record };
+  });
+}
+
+function recordMission_(id, mission, score, details) {
+  return withLock_(function () {
+    const sh = sheet_();
+    const hit = findRowIndex_(sh, id);
+    if (!hit) return { ok: true, student: null }; // 앱이 404로 바꿔 준다
+    const record = hit.record;
+    const prev = record.missions[mission] || null;
+    record.missions[mission] = {
+      completedAt: new Date().toISOString(),
+      score: Math.round(Number(score) || 0),
+      attempts: ((prev && prev.attempts) || 0) + 1,
+      details: details || undefined,
+    };
+    writeRow_(sh, hit.index, record);
+    return { ok: true, student: record };
+  });
+}
+
+function resetAll_() {
+  return withLock_(function () {
+    const sh = sheet_();
+    const last = sh.getLastRow();
+    if (last > 1) sh.deleteRows(2, last - 1);
+    return { ok: true };
+  });
+}

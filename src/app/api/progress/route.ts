@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { storeFailure } from "@/lib/api";
 import { recordMission } from "@/lib/store";
 import { isMissionId } from "@/lib/types";
 
@@ -25,9 +26,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "잘못된 요청이에요." }, { status: 400 });
   }
 
-  const student = await recordMission(studentId, mission, score, details);
-  if (!student) {
-    return NextResponse.json({ error: "학생 정보를 찾을 수 없어요." }, { status: 404 });
+  try {
+    const student = await recordMission(studentId, mission, score, details);
+    if (!student) {
+      return NextResponse.json({ error: "학생 정보를 찾을 수 없어요." }, { status: 404 });
+    }
+    return NextResponse.json({ student });
+  } catch (error) {
+    return storeFailure(error);
   }
-  return NextResponse.json({ student });
 }

@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
+import { storeFailure } from "@/lib/api";
 import { createStudent, listStudents } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const students = await listStudents();
-  return NextResponse.json({ students });
+  try {
+    const students = await listStudents();
+    return NextResponse.json({ students });
+  } catch (error) {
+    return storeFailure(error);
+  }
 }
 
 export async function POST(request: Request) {
@@ -14,6 +19,10 @@ export async function POST(request: Request) {
   if (name.length < 1 || name.length > 12) {
     return NextResponse.json({ error: "이름은 1~12자로 입력해 주세요." }, { status: 400 });
   }
-  const student = await createStudent(name);
-  return NextResponse.json({ student }, { status: 201 });
+  try {
+    const student = await createStudent(name);
+    return NextResponse.json({ student }, { status: 201 });
+  } catch (error) {
+    return storeFailure(error);
+  }
 }
