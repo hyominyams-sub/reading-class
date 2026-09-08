@@ -1,4 +1,6 @@
+import Image from "next/image";
 import type { SceneKey } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 /**
  * 플랫 스타일 SVG 삽화. 외부 이미지 없이 장면을 그린다.
@@ -505,8 +507,46 @@ const SCENES: Record<SceneKey, { title: string; render: () => React.ReactNode }>
   runner: { title: "루미 달리기", render: RunnerScene },
 };
 
+/**
+ * 힉스필드(nano_banana_2)로 그린 래스터 삽화가 있는 장면.
+ * 다시 만들려면 `./scripts/gen-scenes.sh <키>` — 인물 디자인은
+ * scripts/ref/cast-sheet.png 를 레퍼런스로 넘겨 고정한다.
+ * 여기 없는 키는 아래 SVG 삽화로 그린다.
+ */
+const SCENE_ART = new Set<SceneKey>([
+  "classroom",
+  "lunch",
+  "umbrella",
+  "art",
+  "rumor",
+  "rain",
+  "ending",
+  "diary-night",
+  "book",
+  "runner",
+]);
+
+/** 생성 원본 크기 (21:9, 1k) */
+const ART_W = 1584;
+const ART_H = 672;
+
 export function SceneIllustration({ scene, className }: { scene: SceneKey; className?: string }) {
   const def = SCENES[scene];
+
+  if (SCENE_ART.has(scene)) {
+    return (
+      <Image
+        src={`/images/scenes/${scene}.png`}
+        alt={def.title}
+        width={ART_W}
+        height={ART_H}
+        sizes="(max-width: 768px) 100vw, 768px"
+        preload={scene === "book"}
+        className={cn("object-cover", className ?? "h-auto w-full")}
+      />
+    );
+  }
+
   const Render = def.render;
   return (
     <svg viewBox="0 0 640 300" role="img" aria-label={def.title} className={className ?? "h-auto w-full"} preserveAspectRatio="xMidYMid slice">

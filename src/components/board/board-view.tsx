@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { IconArrow, IconMedal, IconUsers } from "@/components/candy-icons";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { MyMissions } from "@/components/board/my-missions";
 import { ProgressDots } from "@/components/progress-dots";
 import { useStudent } from "@/lib/student-context";
-import { BOOK, MISSIONS } from "@/content/book";
+import { BOOK } from "@/content/book";
 import { completedCount, isCleared, MISSION_IDS, type StudentRecord } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -21,10 +22,16 @@ function sortStudents(list: StudentRecord[]): StudentRecord[] {
   });
 }
 
+/**
+ * 현황판 = 먼저 "내 기록", 그 다음 "우리 반".
+ * 학생은 태블릿으로 자기 결과를 확인하러 오므로 화면 위쪽 전체를 내 미션에 준다.
+ * 반 전체 현황은 아래에 접힌 채로 두고 필요할 때만 펼친다.
+ */
 export function BoardView() {
   const { student } = useStudent();
   const [students, setStudents] = useState<StudentRecord[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const [showFriends, setShowFriends] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -49,143 +56,136 @@ export function BoardView() {
   }, []);
 
   const list = students ?? [];
-  const clearedCount = list.filter(isCleared).length;
-  const totalDone = list.reduce((sum, s) => sum + completedCount(s), 0);
-  const totalSlots = list.length * MISSION_IDS.length;
-  const pct = totalSlots ? Math.round((totalDone / totalSlots) * 100) : 0;
+  // 서버 기록이 있으면 그쪽이 최신, 없으면 로컬 정보로라도 내 진행을 보여 준다.
   const mine = student ? (list.find((s) => s.id === student.id) ?? student) : null;
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-sm font-heading text-primary-strong">{BOOK.title}</p>
-          <h1 className="font-heading text-4xl sm:text-5xl">우리 반 미션 현황</h1>
-        </div>
+    <main className="mx-auto w-full max-w-4xl px-4 py-5 sm:py-8">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="font-heading text-sm text-primary-strong">{BOOK.title}</p>
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className={cn("size-2.5 rounded-full", failed ? "bg-destructive" : "bg-candy-mint")} />
           {failed ? "연결을 확인하는 중…" : "3초마다 자동 새로고침"}
         </p>
       </div>
 
-      <section className="mt-5 grid gap-3 sm:grid-cols-3" aria-label="요약">
-        <Stat icon={<IconUsers className="size-7" />} label="참여" value={`${list.length}명`} />
-        <Stat icon={<IconMedal className="size-7" />} label="클리어" value={`${clearedCount}명`} accent />
-        <div className="rounded-3xl bg-card p-4 sticker">
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span>전체 진행률</span>
-            <span className="text-base font-bold text-foreground tabular-nums">{pct}%</span>
-          </div>
-          <div className="mt-3 h-4 overflow-hidden rounded-full border-2 border-ink bg-card" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-            <div className="h-full rounded-full bg-candy-pink transition-all duration-500" style={{ width: `${pct}%` }} />
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            미션 {totalDone}개 완료 / 전체 {totalSlots}개
-          </p>
-        </div>
-      </section>
+      {mine ? <MyMissions student={mine} /> : <JoinPrompt />}
 
-      {mine && <MyProgress student={mine} />}
+      {/* 내 기록과 반 현황을 가르는 사탕 띠 */}
+      <div className="candy-stripe my-7 h-3 rounded-full border-[2.5px] border-ink sm:my-9" />
 
-      <section className="mt-8">
-        <h2 className="font-heading text-2xl">친구들</h2>
-        {students === null ? (
-          <p className="mt-4 text-muted-foreground">불러오는 중…</p>
-        ) : list.length === 0 ? (
-          <div className="mt-4 rounded-3xl border-[3px] border-dashed border-ink/35 bg-card/70 p-8 text-center text-muted-foreground">
-            아직 참여한 친구가 없어요. QR을 찍고 이름을 입력하면 여기에 나타나요.
-          </div>
-        ) : (
-          <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {sortStudents(list).map((s) => (
-              <StudentCard key={s.id} student={s} highlight={student?.id === s.id} />
-            ))}
-          </ul>
-        )}
-      </section>
+      <ClassSection
+        list={list}
+        loading={students === null}
+        myId={mine?.id}
+        open={showFriends || !mine}
+        onToggle={mine ? () => setShowFriends((v) => !v) : null}
+      />
     </main>
   );
 }
 
-function Stat({ icon, label, value, accent = false }: { icon: React.ReactNode; label: string; value: string; accent?: boolean }) {
+/** 이름을 아직 입력하지 않은 태블릿 — 내 기록 자리에 무엇을 해야 하는지 알려 준다. */
+function JoinPrompt() {
   return (
-    <div className={cn("flex items-center gap-4 rounded-3xl p-4 sticker", accent ? "bg-candy-yellow" : "bg-card")}>
-      <span className={cn("grid size-12 shrink-0 place-items-center rounded-2xl border-[2.5px] border-ink text-ink", accent ? "bg-card" : "bg-candy-blue")}>{icon}</span>
-      <div>
-        <p className={cn("text-sm font-medium", accent ? "text-ink/70" : "text-muted-foreground")}>{label}</p>
-        <p className="font-heading text-3xl tabular-nums">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-function MyProgress({ student }: { student: StudentRecord }) {
-  const remaining = MISSION_IDS.filter((id) => !student.missions[id]);
-  const cleared = remaining.length === 0;
-  return (
-    <section className="mt-6 rounded-3xl bg-candy-cream p-5 sticker" aria-label="내 진행">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <ProgressDots student={student} size="lg" />
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">내 진행</p>
-            <p className="font-heading text-xl">
-              {student.name} · {completedCount(student)}/{MISSION_IDS.length} 완료
-            </p>
-          </div>
-        </div>
-        {cleared ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-candy-mint px-4 py-1.5 font-heading text-ink sticker-xs">
-            <IconMedal className="size-5" /> 모든 미션 클리어!
-          </span>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {remaining.map((id) => (
-              <Link key={id} href={`/mission/${id}`} className={cn(buttonVariants({ size: "lg" }))}>
-                미션 {id} 하러 가기
-                <IconArrow data-icon="inline-end" />
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
+    <section className="rounded-3xl bg-candy-cream p-6 sticker sm:p-8">
+      <h1 className="font-heading text-4xl leading-tight sm:text-5xl">내 미션 카드</h1>
+      <p className="mt-3 text-lg leading-relaxed text-ink/75">
+        이름을 입력하고 미션을 시작하면, 내가 푼 퀴즈와 내가 쓴 일기가 여기에 모여요.
+      </p>
+      <Link href="/" className={cn(buttonVariants({ size: "xl" }), "mt-5 w-full sm:w-auto")}>
+        이름 입력하고 시작하기
+        <IconArrow data-icon="inline-end" />
+      </Link>
     </section>
   );
 }
 
-function StudentCard({ student, highlight }: { student: StudentRecord; highlight: boolean }) {
+function ClassSection({
+  list,
+  loading,
+  myId,
+  open,
+  onToggle,
+}: {
+  list: StudentRecord[];
+  loading: boolean;
+  myId?: string;
+  open: boolean;
+  onToggle: (() => void) | null;
+}) {
+  const clearedCount = list.filter(isCleared).length;
+  const totalDone = list.reduce((sum, s) => sum + completedCount(s), 0);
+  const totalSlots = list.length * MISSION_IDS.length;
+  const pct = totalSlots ? Math.round((totalDone / totalSlots) * 100) : 0;
+
+  return (
+    <section className="rounded-3xl bg-card/80 p-4 sticker-sm sm:p-5" aria-labelledby="class-heading">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="grid size-11 shrink-0 place-items-center rounded-2xl border-[2.5px] border-ink bg-candy-blue text-ink">
+          <IconUsers className="size-6" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 id="class-heading" className="font-heading text-xl">
+            우리 반
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            참여 {list.length}명 · 클리어 {clearedCount}명 · 전체 진행률 {pct}%
+          </p>
+        </div>
+        {onToggle && (
+          <Button variant="outline" size="lg" onClick={onToggle} aria-expanded={open}>
+            {open ? "접기" : `친구들 보기 (${list.length})`}
+          </Button>
+        )}
+      </div>
+
+      <div
+        className="mt-3 h-3 overflow-hidden rounded-full border-2 border-ink bg-card"
+        role="progressbar"
+        aria-label="우리 반 전체 진행률"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div className="h-full rounded-full bg-candy-pink transition-all duration-500" style={{ width: `${pct}%` }} />
+      </div>
+
+      {open && (
+        <div className="mt-4">
+          {loading ? (
+            <p className="text-sm text-muted-foreground">불러오는 중…</p>
+          ) : list.length === 0 ? (
+            <p className="rounded-2xl border-[2.5px] border-dashed border-ink/35 p-5 text-center text-sm text-muted-foreground">
+              아직 참여한 친구가 없어요. QR을 찍고 이름을 입력하면 여기에 나타나요.
+            </p>
+          ) : (
+            <ul className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+              {sortStudents(list).map((s) => (
+                <FriendChip key={s.id} student={s} isMe={s.id === myId} />
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function FriendChip({ student, isMe }: { student: StudentRecord; isMe: boolean }) {
   const cleared = isCleared(student);
   return (
     <li
       className={cn(
-        "flex flex-col gap-3 rounded-3xl bg-card p-4 sticker transition-colors",
+        "flex items-center gap-2 rounded-2xl bg-card px-3 py-2 sticker-xs",
         cleared && "bg-candy-mint",
-        highlight && "bg-candy-yellow",
+        isMe && "bg-candy-yellow",
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <p className="truncate font-heading text-xl">{student.name}</p>
-        {cleared && (
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border-2 border-ink bg-card px-2 py-0.5 text-xs font-bold text-ink">
-            <IconMedal className="size-4" /> 클리어
-          </span>
-        )}
-      </div>
-      <div className="flex items-center justify-between gap-2">
-        <ProgressDots student={student} size="sm" className="shrink-0" />
-        <span className="shrink-0 text-sm font-bold text-ink/70 tabular-nums">
-          {completedCount(student)}/{MISSION_IDS.length}
-        </span>
-      </div>
-      <div className="flex gap-1">
-        {MISSION_IDS.map((id) => (
-          <span
-            key={id}
-            className={cn("h-2.5 flex-1 rounded-full border-2 border-ink", student.missions[id] ? "bg-candy-pink" : "bg-card")}
-            title={MISSIONS[id].title}
-          />
-        ))}
-      </div>
+      <span className="truncate font-heading text-base">{student.name}</span>
+      {isMe && <span className="shrink-0 rounded-full border-2 border-ink bg-card px-1.5 text-xs font-bold text-ink">나</span>}
+      {cleared && !isMe && <IconMedal className="size-5 shrink-0 text-ink" />}
+      <ProgressDots student={student} size="sm" className="ml-auto shrink-0" />
     </li>
   );
 }
