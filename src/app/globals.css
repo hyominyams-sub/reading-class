@@ -1,26 +1,367 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-pretendard), Poppins, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-mono: Roboto Mono, ui-monospace, monospace;
+  --font-heading: var(--font-jua), var(--font-pretendard), "Apple SD Gothic Neo", sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-primary-strong: var(--primary-strong);
+  --color-candy-pink: var(--candy-pink);
+  --color-candy-blue: var(--candy-blue);
+  --color-candy-yellow: var(--candy-yellow);
+  --color-candy-mint: var(--candy-mint);
+  --color-candy-lilac: var(--candy-lilac);
+  --color-candy-cream: var(--candy-cream);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-sky-soft: var(--sky-soft);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --radius: 1rem;
+  --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
+  --tracking-tight: calc(var(--tracking-normal) - 0.025em);
+  --tracking-wide: calc(var(--tracking-normal) + 0.025em);
+  --tracking-wider: calc(var(--tracking-normal) + 0.05em);
+  --tracking-widest: calc(var(--tracking-normal) + 0.1em);
+  --tracking-normal: var(--tracking-normal);
+  --shadow-2xl: var(--shadow-2xl);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-md: var(--shadow-md);
+  --shadow: var(--shadow);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-2xs: var(--shadow-2xs);
+  --spacing: var(--spacing);
+  --letter-spacing: var(--letter-spacing);
+  --shadow-offset-y: var(--shadow-offset-y);
+  --shadow-offset-x: var(--shadow-offset-x);
+  --shadow-spread: var(--shadow-spread);
+  --shadow-blur: var(--shadow-blur);
+  --shadow-opacity: var(--shadow-opacity);
+  --color-shadow-color: var(--shadow-color);
+  --color-destructive-foreground: var(--destructive-foreground);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Candyland (tweakcn) 기반 · 밝은 파스텔 단일 테마 (다크 모드 없음) */
+:root {
+  --background: oklch(0.9809 0.0025 228.7836);
+  --foreground: oklch(0.3300 0.0420 344);
+  --card: oklch(1.0000 0 0);
+  --card-foreground: oklch(0.3300 0.0420 344);
+  --popover: oklch(1.0000 0 0);
+  --popover-foreground: oklch(0.3300 0.0420 344);
+  --primary: oklch(0.8677 0.0735 7.0855);
+  --primary-foreground: oklch(0 0 0);
+  --secondary: oklch(0.8148 0.0819 225.7537);
+  --secondary-foreground: oklch(0 0 0);
+  --muted: oklch(0.9450 0.0220 90);
+  --muted-foreground: oklch(0.5450 0.0300 344);
+  --accent: oklch(0.9680 0.2110 109.7692);
+  --accent-foreground: oklch(0 0 0);
+  --destructive: oklch(0.6368 0.2078 25.3313);
+  --border: oklch(0.8600 0.0330 344);
+  --input: oklch(0.8600 0.0330 344);
+  --ring: oklch(0.8677 0.0735 7.0855);
+  --success: oklch(0.8300 0.1550 152);
+  --success-foreground: oklch(0.3400 0.0900 152);
+  --warning: oklch(0.8500 0.1500 78);
+  --sky-soft: oklch(0.9350 0.0430 226);
+  --chart-1: oklch(0.8677 0.0735 7.0855);
+  --chart-2: oklch(0.8148 0.0819 225.7537);
+  --chart-3: oklch(0.9680 0.2110 109.7692);
+  --chart-4: oklch(0.8027 0.1355 349.2347);
+  --chart-5: oklch(0.7395 0.2268 142.8504);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.9809 0.0025 228.7836);
+  --sidebar-foreground: oklch(0.3211 0 0);
+  --sidebar-primary: oklch(0.8677 0.0735 7.0855);
+  --sidebar-primary-foreground: oklch(0 0 0);
+  --sidebar-accent: oklch(0.9680 0.2110 109.7692);
+  --sidebar-accent-foreground: oklch(0 0 0);
+  --sidebar-border: oklch(0.8699 0 0);
+  --sidebar-ring: oklch(0.8677 0.0735 7.0855);
+  --destructive-foreground: oklch(1.0000 0 0);
+  --font-sans: Poppins, sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: Roboto Mono, monospace;
+  --shadow-color: oklch(0 0 0);
+  --shadow-opacity: 0.1;
+  --shadow-blur: 3px;
+  --shadow-spread: 0px;
+  --shadow-offset-x: 0;
+  --shadow-offset-y: 1px;
+  --letter-spacing: 0em;
+  --spacing: 0.25rem;
+  --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+  --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
+  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
+  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 2px 4px -1px hsl(0 0% 0% / 0.10);
+  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 4px 6px -1px hsl(0 0% 0% / 0.10);
+  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 8px 10px -1px hsl(0 0% 0% / 0.10);
+  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+  --tracking-normal: 0em;
+
+  /* 스티커 외곽선/그림자용 잉크 + 텍스트용 진한 핑크 */
+  --ink: oklch(0.3300 0.0420 344);
+  --primary-strong: oklch(0.5600 0.1750 5);
+
+  /* 캔디 팔레트 (삽화·배지·사탕 장식용) */
+  --candy-pink: oklch(0.8300 0.1150 350);
+  --candy-blue: oklch(0.8148 0.0819 225.7537);
+  --candy-yellow: oklch(0.9100 0.1600 96);
+  --candy-mint: oklch(0.8500 0.1250 158);
+  --candy-lilac: oklch(0.8100 0.0950 300);
+  --candy-cream: oklch(0.9750 0.0260 84);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    font-size: 17px;
+    -webkit-text-size-adjust: 100%;
+    color-scheme: light;
+  }
+  body {
+    @apply bg-background text-foreground;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    letter-spacing: var(--tracking-normal);
+  }
+  ::selection {
+    background: var(--candy-yellow);
+  }
+  button,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
+/* 일기장 괘선 (SVG 패턴, 그라디언트 없음) */
+.paper-lines {
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%274%27%20height%3D%2736%27%3E%3Crect%20x%3D%270%27%20y%3D%2735%27%20width%3D%274%27%20height%3D%271%27%20fill%3D%27%23EBC9DC%27%2F%3E%3C%2Fsvg%3E");
+  background-size: 4px 36px;
+  background-attachment: local;
+}
+
+/* 픽셀 아트 캔버스 */
+.pixelated {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.touch-none {
+  touch-action: none;
+}
+
+/* ─────────────────────────────────────────────
+   Candyland 스티커 스타일 유틸리티
+   두꺼운 잉크 외곽선 + 흐림 없는 오프셋 그림자로
+   "붙였다 뗀 스티커" 같은 질감을 만든다.
+   ───────────────────────────────────────────── */
+
+/* 배경: 은은한 사탕가루(스프링클) 패턴 */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2796%27%20height%3D%2796%27%20viewBox%3D%270%200%2096%2096%27%3E%3Cg%20fill%3D%27none%27%20stroke-linecap%3D%27round%27%20stroke-width%3D%273%27%20opacity%3D%270.38%27%3E%3Cpath%20d%3D%27M10%2016h6%27%20stroke%3D%27%23F0A2BE%27%2F%3E%3Cpath%20d%3D%27M70%2010l5%205%27%20stroke%3D%27%238FC9E6%27%2F%3E%3Cpath%20d%3D%27M42%2036l6-3%27%20stroke%3D%27%23F2CE55%27%2F%3E%3Cpath%20d%3D%27M18%2062l4%204%27%20stroke%3D%27%237CD2A7%27%2F%3E%3Cpath%20d%3D%27M80%2056l-6%203%27%20stroke%3D%27%23B9A2E8%27%2F%3E%3Cpath%20d%3D%27M52%2082h6%27%20stroke%3D%27%23F0A2BE%27%2F%3E%3Cpath%20d%3D%27M6%2086l5-4%27%20stroke%3D%27%23F2CE55%27%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+  background-size: 96px 96px;
+}
+
+/* 제목용 둥근 서체 */
+.font-heading,
+h1, h2 {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* 스티커 카드 3단계 (두께/그림자 크기 차이) */
+.sticker {
+  border: 3px solid var(--ink);
+  box-shadow: 5px 5px 0 0 var(--ink);
+}
+.sticker-sm {
+  border: 2.5px solid var(--ink);
+  box-shadow: 3px 3px 0 0 var(--ink);
+}
+.sticker-xs {
+  border: 2px solid var(--ink);
+  box-shadow: 2px 2px 0 0 var(--ink);
+}
+
+/* 눌리는 상호작용: 그림자만큼 밀려 들어간다 */
+.sticker-press {
+  transition: transform 90ms ease-out, box-shadow 90ms ease-out;
+}
+.sticker-press:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 0 var(--ink);
+}
+.sticker-sm.sticker-press:active,
+.sticker-xs.sticker-press:active {
+  transform: translate(2px, 2px);
+}
+
+/* 링크 카드 hover: 살짝 떠오른다 */
+.sticker-hover {
+  transition: transform 140ms ease-out, box-shadow 140ms ease-out;
+}
+@media (hover: hover) {
+  .sticker-hover:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 7px 7px 0 0 var(--ink);
+  }
+}
+
+/* 사탕 줄무늬 (헤더 하단 띠 · 구분선) */
+.candy-stripe {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--candy-pink) 0 10px,
+    var(--candy-cream) 10px 20px,
+    var(--candy-blue) 20px 30px,
+    var(--candy-cream) 30px 40px
+  );
+}
+
+/* 형광펜 밑줄 강조 */
+.highlight {
+  background-image: linear-gradient(transparent 62%, var(--candy-yellow) 62%);
+  padding-inline: 0.1em;
+}
+
+/* 살짝 기울어진 스티커 (완벽한 정렬 깨기) */
+.tilt-l { transform: rotate(-2deg); }
+.tilt-r { transform: rotate(2deg); }
+
+@keyframes candy-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.candy-bob { animation: candy-bob 2.6s ease-in-out infinite; }
+
+@keyframes candy-pop {
+  0% { transform: scale(0.6) rotate(-10deg); opacity: 0; }
+  60% { transform: scale(1.08) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+.candy-pop { animation: candy-pop 420ms cubic-bezier(.34,1.56,.64,1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .candy-bob, .candy-pop { animation: none; }
+  .sticker-hover:hover { transform: none; }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-page {
+    break-after: page;
+    page-break-after: always;
+  }
+  body {
+    background: #ffffff;
+  }
+}
+
+.dark {
+  --background: oklch(0.2303 0.0125 264.2926);
+  --foreground: oklch(0.9219 0 0);
+  --card: oklch(0.3210 0.0078 223.6661);
+  --card-foreground: oklch(0.9219 0 0);
+  --popover: oklch(0.3210 0.0078 223.6661);
+  --popover-foreground: oklch(0.9219 0 0);
+  --primary: oklch(0.8027 0.1355 349.2347);
+  --primary-foreground: oklch(0 0 0);
+  --secondary: oklch(0.7395 0.2268 142.8504);
+  --secondary-foreground: oklch(0 0 0);
+  --muted: oklch(0.3867 0 0);
+  --muted-foreground: oklch(0.7155 0 0);
+  --accent: oklch(0.8148 0.0819 225.7537);
+  --accent-foreground: oklch(0 0 0);
+  --destructive: oklch(0.6368 0.2078 25.3313);
+  --destructive-foreground: oklch(1.0000 0 0);
+  --border: oklch(0.3867 0 0);
+  --input: oklch(0.3867 0 0);
+  --ring: oklch(0.8027 0.1355 349.2347);
+  --chart-1: oklch(0.8027 0.1355 349.2347);
+  --chart-2: oklch(0.7395 0.2268 142.8504);
+  --chart-3: oklch(0.8148 0.0819 225.7537);
+  --chart-4: oklch(0.9680 0.2110 109.7692);
+  --chart-5: oklch(0.8652 0.1768 90.3816);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.2303 0.0125 264.2926);
+  --sidebar-foreground: oklch(0.9219 0 0);
+  --sidebar-primary: oklch(0.8027 0.1355 349.2347);
+  --sidebar-primary-foreground: oklch(0 0 0);
+  --sidebar-accent: oklch(0.8148 0.0819 225.7537);
+  --sidebar-accent-foreground: oklch(0 0 0);
+  --sidebar-border: oklch(0.3867 0 0);
+  --sidebar-ring: oklch(0.8027 0.1355 349.2347);
+  --font-sans: Poppins, sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-mono: Roboto Mono, monospace;
+  --shadow-color: oklch(0 0 0);
+  --shadow-opacity: 0.1;
+  --shadow-blur: 3px;
+  --shadow-spread: 0px;
+  --shadow-offset-x: 0;
+  --shadow-offset-y: 1px;
+  --letter-spacing: 0em;
+  --spacing: 0.25rem;
+  --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+  --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
+  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
+  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 2px 4px -1px hsl(0 0% 0% / 0.10);
+  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 4px 6px -1px hsl(0 0% 0% / 0.10);
+  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 8px 10px -1px hsl(0 0% 0% / 0.10);
+  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
 }

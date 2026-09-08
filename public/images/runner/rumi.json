@@ -1,0 +1,42 @@
+{
+  "image": "/images/runner/rumi.png",
+  "scale": 0.9,
+  "source": "fallback-script",
+  "states": {
+    "run": {
+      "sy": 0,
+      "w": 96,
+      "h": 96,
+      "count": 6,
+      "fps": 12
+    },
+    "jump": {
+      "sy": 96,
+      "w": 96,
+      "h": 96,
+      "count": 2,
+      "fps": 6
+    },
+    "double": {
+      "sy": 192,
+      "w": 96,
+      "h": 96,
+      "count": 2,
+      "fps": 10
+    },
+    "slide": {
+      "sy": 288,
+      "w": 96,
+      "h": 96,
+      "count": 2,
+      "fps": 8
+    },
+    "hit": {
+      "sy": 384,
+      "w": 96,
+      "h": 96,
+      "count": 2,
+      "fps": 4
+    }
+  }
+}
