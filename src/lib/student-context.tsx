@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { MissionId, StudentRecord } from "./types";
 
 const STORAGE_KEY = "reading-class:student";
@@ -11,6 +11,8 @@ type Status = "loading" | "anonymous" | "ready";
 type StudentContextValue = {
   student: StudentRecord | null;
   status: Status;
+  /** 등록이 뒤늦게 실패했을 때의 사유. 이름 화면으로 되돌아오며 이 문장을 보여 준다. */
+  registerError: string | null;
   register: (name: string) => Promise<void>;
   refresh: () => Promise<void>;
   complete: (mission: MissionId, score: number, details?: Record<string, unknown>) => Promise<StudentRecord>;
@@ -54,6 +56,9 @@ async function readError(res: Response, fallback: string): Promise<string> {
 export function StudentProvider({ children }: { children: React.ReactNode }) {
   const [student, setStudent] = useState<StudentRecord | null>(null);
   const [status, setStatus] = useState<Status>("loading");
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  /** 아직 서버 응답을 기다리는 등록. 미션을 저장하려면 여기서 나온 아이디가 필요하다. */
+  const pendingRegister = useRef<Promise<StudentRecord> | null>(null);
 
   const refresh = useCallback(async () => {
     const stored = readStored();
@@ -87,26 +92,60 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearTimeout(timer);
   }, [refresh]);
 
+  /**
+   * 등록.
+   *
+   * 구글 시트에 한 줄 쓰는 데 2초쯤 걸린다. 아이를 이름 화면에 세워 두지 않고
+   * 먼저 넘긴 뒤, 서버가 준 진짜 기록으로 조용히 바꿔 끼운다. 아이디가 없는 동안은
+   * 미션을 끝낼 수 없는데, 그 사이(2초)에 미션을 깨는 일은 없다. 혹시 있더라도
+   * `complete`가 등록이 끝날 때까지 기다린다.
+   */
   const register = useCallback(async (name: string) => {
-    const res = await fetch("/api/students", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    if (!res.ok) throw new Error(await readError(res, "등록에 실패했어요. 다시 시도해 주세요."));
-    const data = (await res.json()) as { student: StudentRecord };
-    writeStored({ id: data.student.id, name: data.student.name });
-    setStudent(data.student);
+    setRegisterError(null);
+    setStudent({ id: "", name, createdAt: "", missions: {} });
     setStatus("ready");
+
+    const task = (async () => {
+      const res = await fetch("/api/students", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) throw new Error(await readError(res, "등록에 실패했어요. 다시 시도해 주세요."));
+      const data = (await res.json()) as { student: StudentRecord };
+      writeStored({ id: data.student.id, name: data.student.name });
+      setStudent(data.student);
+      return data.student;
+    })();
+
+    pendingRegister.current = task;
+
+    task.catch((error: unknown) => {
+      // 조용히 넘어가면 아이가 미션을 다 풀고 나서야 기록이 없다는 걸 알게 된다.
+      // 이름 화면으로 되돌리고 이유를 보여 준다.
+      if (pendingRegister.current !== task) return;
+      setRegisterError(error instanceof Error ? error.message : "등록에 실패했어요. 다시 시도해 주세요.");
+      setStudent(null);
+      setStatus("anonymous");
+    });
   }, []);
 
   const complete = useCallback(
     async (mission: MissionId, score: number, details?: Record<string, unknown>) => {
       if (!student) throw new Error("학생 정보가 없어요.");
+
+      // 등록이 아직 날아가는 중이면 아이디가 없다. 끝날 때까지 기다린다.
+      let studentId = student.id;
+      if (!studentId) {
+        const registered = await pendingRegister.current;
+        if (!registered) throw new Error("학생 정보가 없어요.");
+        studentId = registered.id;
+      }
+
       const res = await fetch("/api/progress", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId: student.id, mission, score, details }),
+        body: JSON.stringify({ studentId, mission, score, details }),
       });
       if (res.status === 404) {
         writeStored(null);
@@ -129,8 +168,8 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<StudentContextValue>(
-    () => ({ student, status, register, refresh, complete, signOut }),
-    [student, status, register, refresh, complete, signOut],
+    () => ({ student, status, registerError, register, refresh, complete, signOut }),
+    [student, status, registerError, register, refresh, complete, signOut],
   );
 
   return <StudentContext.Provider value={value}>{children}</StudentContext.Provider>;

@@ -24,7 +24,7 @@ export function StudentGate({ children }: { children: React.ReactNode }) {
 }
 
 function NameEntry() {
-  const { register } = useStudent();
+  const { register, registerError } = useStudent();
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -72,9 +72,9 @@ function NameEntry() {
             aria-label="이름"
             className="h-16 rounded-2xl border-[2.5px] border-ink bg-candy-cream px-4 text-xl font-bold shadow-[3px_3px_0_0_var(--ink)] placeholder:font-medium placeholder:text-muted-foreground/70 focus-visible:ring-3 focus-visible:ring-ring/60"
           />
-          {error && (
+          {(error ?? registerError) && (
             <p className="text-sm font-medium text-destructive" role="alert">
-              {error}
+              {error ?? registerError}
             </p>
           )}
           <Button type="submit" size="xl" disabled={busy}>

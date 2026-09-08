@@ -122,11 +122,14 @@ function displayCells_(record) {
   ];
 }
 
-function writeRow_(sh, rowIndex, record) {
-  const values = [record.id, record.name, humanTime_(record.createdAt)]
+function rowValues_(record) {
+  return [record.id, record.name, humanTime_(record.createdAt)]
     .concat(displayCells_(record))
     .concat([JSON.stringify({ createdAt: record.createdAt, missions: record.missions })]);
-  sh.getRange(rowIndex, 1, 1, HEADERS.length).setValues([values]);
+}
+
+function writeRow_(sh, rowIndex, record) {
+  sh.getRange(rowIndex, 1, 1, HEADERS.length).setValues([rowValues_(record)]);
 }
 
 function humanTime_(iso) {
@@ -159,13 +162,20 @@ function getStudent_(id) {
   return hit ? hit.record : null;
 }
 
-/** 쓰기는 전부 잠금 안에서 — 30대가 동시에 눌러도 행이 겹치지 않게 */
+/**
+ * 쓰기는 전부 잠금 안에서 — 30대가 동시에 눌러도 행이 겹치지 않게.
+ *
+ * flush()가 핵심이다. SpreadsheetApp은 쓰기를 모아 뒀다가 나중에 반영하는데,
+ * 그 전에 잠금을 놓으면 다음 실행이 아직 옛날인 시트를 읽고 같은 행에 덮어쓴다.
+ * 잠금을 놓기 전에 반드시 시트에 반영해야 한다.
+ */
 function withLock_(task) {
   const lock = LockService.getScriptLock();
   lock.waitLock(25000);
   try {
     return task();
   } finally {
+    SpreadsheetApp.flush();
     lock.releaseLock();
   }
 }
@@ -176,7 +186,8 @@ function createStudent_(id, name) {
     const sh = sheet_();
     if (findRowIndex_(sh, id)) return { ok: false, error: 'duplicate' };
     const record = { id: id, name: name, createdAt: new Date().toISOString(), missions: {} };
-    writeRow_(sh, sh.getLastRow() + 1, record);
+    // 행 번호를 직접 계산하지 않고 appendRow에 맡긴다 — 계산한 번호는 어긋날 수 있다.
+    sh.appendRow(rowValues_(record));
     return { ok: true, student: record };
   });
 }
