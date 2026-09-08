@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { SceneIllustration } from "@/components/illustrations/scene";
 import { ProgressDots } from "@/components/progress-dots";
-import { IconArrow, IconCheck, IconLollipop, IconStar, MISSION_ICONS } from "@/components/candy-icons";
+import { QrScanButton } from "@/components/qr-scan";
+import { IconCheck, IconLollipop, IconQr, IconStar, MISSION_ICONS } from "@/components/candy-icons";
 import { useStudent } from "@/lib/student-context";
 import { BOOK, MISSIONS } from "@/content/book";
 import { completedCount, isCleared, MISSION_IDS, type MissionId, type StudentRecord } from "@/lib/types";
@@ -59,9 +60,21 @@ export function HomeHub() {
         </div>
       </section>
 
+      <section className="mt-8 rounded-3xl bg-card p-6 text-center sticker sm:p-8">
+        <span className="mx-auto grid size-16 place-items-center rounded-2xl border-[3px] border-ink bg-candy-blue text-ink candy-bob tilt-r">
+          <IconQr className="size-10" />
+        </span>
+        <h2 className="mt-4 font-heading text-2xl">게임은 QR을 찍고 들어가요</h2>
+        <p className="mt-2 leading-relaxed text-muted-foreground">
+          교실에 붙어 있는 <b className="highlight font-semibold text-ink">미션 QR</b>을 찾아서 찍으면 그 게임이 바로 열려요.
+        </p>
+        <QrScanButton className="mt-5 w-full" />
+        <p className="mt-2 text-xs text-muted-foreground">카메라를 써도 되냐고 물으면 “허용”을 눌러 주세요.</p>
+      </section>
+
       <div className="mt-8 mb-4 flex items-center gap-2">
         <IconLollipop className="size-7 text-ink candy-bob" />
-        <h2 className="font-heading text-2xl">미션 세 개, 골라서 시작!</h2>
+        <h2 className="font-heading text-2xl">미션 세 개, 찾아서 도전!</h2>
       </div>
 
       <section className="grid gap-5" aria-label="미션 목록">
@@ -78,38 +91,28 @@ export function HomeHub() {
         >
           다른 이름으로 시작하기
         </button>
-        <nav className="flex gap-2">
-          {[
-            { href: "/board", label: "현황판" },
-            { href: "/qr", label: "QR 인쇄" },
-            { href: "/teacher", label: "교사용" },
-          ].map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="rounded-full bg-card px-3 py-1 font-semibold text-ink sticker-xs sticker-press"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        {/* QR 인쇄·교사용은 오른쪽 위 "QR 없이 들어가기"(관리자 암호) 안에 있다. */}
+        <Link
+          href="/board"
+          className="rounded-full bg-card px-3 py-1 font-semibold text-ink sticker-xs sticker-press"
+        >
+          현황판
+        </Link>
       </footer>
     </main>
   );
 }
 
+/** 미션 카드는 안내판이다 — 들어가는 문은 교실에 붙은 QR뿐. */
 function MissionCard({ id, student, tilt }: { id: MissionId; student: StudentRecord; tilt: string }) {
   const info = MISSIONS[id];
   const done = student.missions[id];
   const Icon = MISSION_ICONS[info.icon];
   return (
-    <Link
-      href={`/mission/${id}`}
-      className="group flex items-center gap-4 rounded-3xl bg-card p-4 sticker sticker-hover sm:gap-5 sm:p-5"
-    >
+    <article className="flex items-center gap-4 rounded-3xl bg-card p-4 sticker sm:gap-5 sm:p-5">
       <span
         className={cn(
-          "grid size-16 shrink-0 place-items-center rounded-2xl border-[3px] border-ink text-ink transition-transform group-hover:rotate-3",
+          "grid size-16 shrink-0 place-items-center rounded-2xl border-[3px] border-ink text-ink",
           tilt,
           done ? "bg-candy-mint" : MISSION_TONE[id],
         )}
@@ -125,13 +128,15 @@ function MissionCard({ id, student, tilt }: { id: MissionId; student: StudentRec
           </span>
         </span>
         <span className="mt-0.5 block font-heading text-xl leading-snug">{info.title}</span>
-        {done && (
-          <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-candy-mint px-2 py-0.5 text-xs font-bold text-ink">
-            완료 · {done.score}점
-          </span>
-        )}
+        <span
+          className={cn(
+            "mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold text-ink",
+            done ? "bg-candy-mint" : "bg-candy-cream",
+          )}
+        >
+          {done ? `완료 · ${done.score}점` : `미션 ${id} QR을 찾아 찍으면 시작!`}
+        </span>
       </span>
-      <IconArrow className="size-6 shrink-0 text-ink transition-transform group-hover:translate-x-1" />
-    </Link>
+    </article>
   );
 }

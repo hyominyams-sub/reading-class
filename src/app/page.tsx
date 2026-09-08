@@ -5,7 +5,7 @@ import { StudentGate } from "@/components/student-gate";
 export default function HomePage() {
   return (
     <>
-      <AppHeader />
+      <AppHeader adminEntry />
       <StudentGate>
         <HomeHub />
       </StudentGate>

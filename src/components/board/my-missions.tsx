@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { IconArrow, IconCheck, IconMedal, IconRedo, IconSparkle, IconStar, MISSION_ICONS } from "@/components/candy-icons";
+import { IconCheck, IconMedal, IconQr, IconRedo, IconStar, MISSION_ICONS } from "@/components/candy-icons";
+import { QrScanButton } from "@/components/qr-scan";
 import { buttonVariants } from "@/components/ui/button";
 import { MISSIONS } from "@/content/book";
 import {
@@ -120,11 +121,7 @@ export function MyMissions({ student }: { student: StudentRecord }) {
             )}
           </p>
           {next ? (
-            <Link href={`/mission/${next}`} className={cn(buttonVariants({ size: "xl" }), "w-full sm:w-auto")}>
-              <IconSparkle data-icon="inline-start" />
-              {done === 0 ? "미션 1부터 시작하기" : `이어서 미션 ${next} 하기`}
-              <IconArrow data-icon="inline-end" />
-            </Link>
+            <QrScanButton className="w-full sm:w-auto" label={`미션 ${next} QR 찍기`} />
           ) : (
             <Link href="/" className={cn(buttonVariants({ variant: "outline", size: "xl" }), "w-full sm:w-auto")}>
               <IconRedo data-icon="inline-start" />
@@ -207,27 +204,17 @@ function MyMissionCard({
 
       {result && <MyResult id={id} result={result} />}
 
+      {/* 들어가는 문은 교실에 붙은 QR뿐 — 여기서는 어디로 가야 하는지만 알려 준다. */}
       <div className="mt-4 flex justify-end">
-        {result ? (
-          <Link
-            href={`/mission/${id}`}
-            className={cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full sm:w-auto")}
-          >
-            <IconRedo data-icon="inline-start" />
-            다시 하기
-          </Link>
-        ) : (
-          <Link
-            href={`/mission/${id}`}
-            className={cn(
-              buttonVariants({ variant: isNext ? "default" : "secondary", size: isNext ? "xl" : "lg" }),
-              "w-full sm:w-auto",
-            )}
-          >
-            하러 가기
-            <IconArrow data-icon="inline-end" />
-          </Link>
-        )}
+        <span
+          className={cn(
+            "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-bold text-ink",
+            isNext && !result ? "bg-card sticker-xs" : "bg-card/70",
+          )}
+        >
+          <IconQr className="size-5" />
+          {result ? `다시 하려면 미션 ${id} QR을 한 번 더 찍어요` : `교실에서 미션 ${id} QR을 찾아 찍어요`}
+        </span>
       </div>
     </li>
   );

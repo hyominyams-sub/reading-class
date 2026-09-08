@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { IconArrow, IconClock, IconMedal, IconPodium, IconRedo, IconSparkle } from "@/components/candy-icons";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { SceneIllustration } from "@/components/illustrations/scene";
+import { QrScanButton } from "@/components/qr-scan";
 import { useStudent } from "@/lib/student-context";
 import { BOOK, MISSIONS } from "@/content/book";
 import { MISSION_IDS, type MissionId, type SceneKey } from "@/lib/types";
@@ -88,36 +89,48 @@ export function MissionFrame({ mission, scene, howTo, summary, children }: Props
             <span className="font-heading text-xl">점</span>
           </div>
           {summary && <div className="mt-6 text-left">{summary(outcome)}</div>}
-          {!outcome.saved && (
+          {!outcome.saved && !outcome.error && (
+            <p className="mt-6 inline-flex items-center gap-2 rounded-full bg-candy-cream px-4 py-2 font-medium text-muted-foreground sticker-xs">
+              <IconClock className="size-5 motion-safe:animate-spin [animation-duration:2.4s]" />
+              기록을 저장하는 중이에요…
+            </p>
+          )}
+          {outcome.error && (
             <div className="mt-6 flex flex-col items-center gap-2 rounded-2xl border-[2.5px] border-destructive bg-destructive/10 p-4 text-destructive">
               <p className="flex items-center gap-2 font-semibold">
                 <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full bg-destructive text-sm font-bold text-white">!</span>
-                {outcome.error ?? "기록을 저장하는 중이에요…"}
+                {outcome.error}
               </p>
-              {outcome.error && (
-                <Button variant="outline" size="sm" onClick={retrySave}>
-                  다시 저장하기
-                </Button>
-              )}
+              <Button variant="outline" size="sm" onClick={retrySave}>
+                다시 저장하기
+              </Button>
             </div>
           )}
           <div className="mt-8 flex flex-col gap-3">
             {next ? (
-              <Link href={`/mission/${next}`} className={cn(buttonVariants({ size: "xl" }))}>
-                다음: 미션 {next} · {MISSIONS[next].title}
-                <IconArrow data-icon="inline-end" />
-              </Link>
+              <>
+                <p className="leading-relaxed text-muted-foreground">
+                  다음은{" "}
+                  <b className="font-semibold text-ink">
+                    미션 {next} · {MISSIONS[next].title}
+                  </b>
+                  {" "}— 교실에서 그 QR을 찾아 찍어요.
+                </p>
+                <QrScanButton label="다음 QR 찍기" />
+              </>
             ) : (
               <Link href="/board" className={cn(buttonVariants({ size: "xl" }))}>
-                모든 미션 완료! 현황판 보기
+                모든 미션 완료! 결과 보기
                 <IconArrow data-icon="inline-end" />
               </Link>
             )}
             <div className="flex gap-3">
-              <Link href="/board" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "flex-1")}>
-                <IconPodium data-icon="inline-start" />
-                현황판
-              </Link>
+              {next && (
+                <Link href="/board" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "flex-1")}>
+                  <IconPodium data-icon="inline-start" />
+                  결과 보기
+                </Link>
+              )}
               <Button variant="outline" size="lg" className="flex-1" onClick={start}>
                 <IconRedo data-icon="inline-start" />
                 다시 하기

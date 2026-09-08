@@ -106,7 +106,7 @@ function QrCard({ entry, url }: { entry: Entry; url: string }) {
       <p className="text-muted-foreground print:text-xl">{entry.desc}</p>
       <canvas ref={ref} className="mt-4 aspect-square h-auto w-full max-w-[360px] print:max-w-[520px]" aria-label={`${entry.badge} QR 코드`} />
       <p className="mt-3 max-w-full break-all font-mono text-xs text-muted-foreground print:text-base">{url || "주소를 입력하면 QR이 만들어져요"}</p>
-      <p className="mt-2 hidden text-lg font-medium print:block">태블릿 카메라로 QR을 찍고 이름을 입력하세요</p>
+      <p className="mt-2 hidden text-lg font-medium print:block">앱 홈의 “QR 코드 찍기” 또는 태블릿 카메라로 이 QR을 찍으세요</p>
     </article>
   );
 }

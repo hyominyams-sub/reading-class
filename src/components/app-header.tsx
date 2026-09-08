@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AdminEntry } from "@/components/admin-entry";
 import { buttonVariants } from "@/components/ui/button";
 import { IconBook, IconPodium } from "@/components/candy-icons";
 import { ProgressDots } from "@/components/progress-dots";
@@ -8,7 +9,14 @@ import { useStudent } from "@/lib/student-context";
 import { BOOK } from "@/content/book";
 import { cn } from "@/lib/utils";
 
-export function AppHeader({ showBoardLink = true }: { showBoardLink?: boolean }) {
+export function AppHeader({
+  showBoardLink = true,
+  adminEntry = false,
+}: {
+  showBoardLink?: boolean;
+  /** 오른쪽 위에 "QR 없이 들어가기"(관리자 암호) 버튼을 둔다 — 학생 홈에서만 쓴다. */
+  adminEntry?: boolean;
+}) {
   const { student } = useStudent();
   return (
     <header className="no-print sticky top-0 z-30 bg-card">
@@ -39,6 +47,7 @@ export function AppHeader({ showBoardLink = true }: { showBoardLink?: boolean })
               <span className="hidden sm:inline">현황판</span>
             </Link>
           )}
+          {adminEntry && <AdminEntry />}
         </div>
       </div>
       {/* 사탕 줄무늬 띠 — 밋밋한 1px 보더 대신 */}

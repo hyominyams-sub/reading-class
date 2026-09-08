@@ -366,6 +366,34 @@ export function IconRefresh(props: IconProps) {
   );
 }
 
+/** QR 코드 찍기 */
+export function IconQr(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3 11V6a3 3 0 0 1 3-3h5" />
+      <path d="M21 3h5a3 3 0 0 1 3 3v5" />
+      <path d="M29 21v5a3 3 0 0 1-3 3h-5" />
+      <path d="M11 29H6a3 3 0 0 1-3-3v-5" />
+      <rect x={7.5} y={7.5} width={7} height={7} rx={1.6} fill={PINK} />
+      <rect x={17.5} y={7.5} width={7} height={7} rx={1.6} fill={BLUE} />
+      <rect x={7.5} y={17.5} width={7} height={7} rx={1.6} fill={YELLOW} />
+      <path d="M17.5 17.5h3v3M24.5 17.8v3.2M17.8 24.5h6.7" />
+    </Svg>
+  );
+}
+
+/** 선생님 잠금 (관리자 암호) */
+export function IconLock(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M10.5 14.5v-4a5.5 5.5 0 0 1 11 0v4" />
+      <rect x={5.5} y={14.5} width={21} height={13.5} rx={3.5} fill={YELLOW} />
+      <circle cx={16} cy={20} r={2.1} fill="currentColor" stroke="none" />
+      <path d="M16 22.2v2.4" />
+    </Svg>
+  );
+}
+
 /** 미션 아이콘 키 → 컴포넌트 */
 export const MISSION_ICONS = {
   run: IconCrane,
