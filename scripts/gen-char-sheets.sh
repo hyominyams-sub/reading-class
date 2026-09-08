@@ -4,6 +4,15 @@
 #   - 결과: scripts/ref/sheets/<key>.png
 # 사용: ./scripts/gen-char-sheets.sh [키…]  (인자 없으면 전체)
 #   키: sheet-rumi sheet-ddungi pixel-rumi pixel-ddungi book-duo
+#
+# 픽셀 시트를 게임용 균일 격자(96px 셀 · run6/jump2/double2/slide2/hit2)로 패킹하려면
+# 생성 뒤 scripts/pack-sprites-cc.py 를 돌린다. --drop 은 생성물마다 달라지므로
+# 먼저 --list 로 프레임 번호를 확인하고 여분(중복 런 프레임·먼지·별 조각)을 빼준다.
+#   python3 scripts/pack-sprites-cc.py scripts/ref/sheets/pixel-rumi.png --glue 8 --list
+#   python3 scripts/pack-sprites-cc.py scripts/ref/sheets/pixel-rumi.png --glue 8 --drop 6,11,13 \
+#       --out scripts/ref/sheets/pixel-rumi-packed.png --manifest scripts/ref/sheets/pixel-rumi-packed.json
+#   python3 scripts/pack-sprites-cc.py scripts/ref/sheets/pixel-ddungi.png --glue 8 --drop 8,9,15 \
+#       --out scripts/ref/sheets/pixel-ddungi-packed.png --manifest scripts/ref/sheets/pixel-ddungi-packed.json
 set -uo pipefail
 cd "$(dirname "$0")/.."
 export PATH="$HOME/.npm-global/bin:$HOME/.local/bin:$PATH"

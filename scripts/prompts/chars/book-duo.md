@@ -13,6 +13,11 @@ Keep each character's identifying colours and silhouette exactly as in the refer
 Mood: warm, gentle, cheerful, for readers aged 8-10.
 Korean labels only, small and tidy. NO English text, NO numbers, NO watermark.
 
+CRITICAL IDENTITY LOCK — the restyle changes the LINE and the PALETTE only, never the body plan:
+- RUMI keeps a big ROUND WHITE HEAD sitting on a SHORT stubby neck, with the black feather topknot on top and the long flat gold spatula bill sticking straight forward. Rumi is a CHUNKY CARTOON MASCOT about 4 heads tall. Do NOT redraw Rumi as a realistic stork, heron, crane, swan or pelican. NO long S-curved neck. NO small head. NO realistic feathered wings — the wings stay as two simple rounded deep-violet paddles.
+- DDUNGI keeps a WARM GREY #8B817A round blob body with a PEACH #F2C7A8 scalloped frill on the back and PEACH fin arms and flipper feet, two bulging eyes on TOP of the head, and a wide gold-outlined grin. Do NOT give Ddungi a blue or white belly, do NOT give it orange or red fins, do NOT redraw it as a frog or a toad.
+- Both characters must be instantly recognisable as the same characters in the attached reference, just drawn with plum outlines and softer picture-book colours.
+
 Do NOT print any section numbers, list numbers or bullet numerals — headers carry the Korean label only.
 
 Reference the attached image for the two character designs and keep them recognisable.
