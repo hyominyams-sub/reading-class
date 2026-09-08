@@ -28,8 +28,8 @@ function missionSummary(student: StudentRecord, id: 1 | 2 | 3): string {
   const r = student.missions[id];
   if (!r) return "";
   const d = (r.details ?? {}) as Record<string, unknown>;
-  if (id === 1 && typeof d.correct === "number" && typeof d.total === "number") return `정답 ${d.correct}/${d.total}`;
-  if (id === 2 && typeof d.firstTryCorrect === "number" && typeof d.decisionScenes === "number") return `첫 시도 정답 ${d.firstTryCorrect}/${d.decisionScenes}`;
+  if (id === 1 && typeof d.firstTryCorrect === "number" && typeof d.decisionScenes === "number") return `첫 선택 ${d.firstTryCorrect}/${d.decisionScenes}`;
+  if (id === 2 && typeof d.correct === "number" && typeof d.answered === "number") return `정답 ${d.correct}/${d.answered}`;
   if (id === 3 && typeof d.chars === "number") return `${d.chars}자`;
   return "";
 }
@@ -198,7 +198,7 @@ export function TeacherView() {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {viewing?.name} · {WRITING.title}
+              {viewing?.name ? `${viewing.name}의 마음 일기` : WRITING.title}
             </DialogTitle>
             <DialogDescription>
               {writing?.sceneLabel ?? "장면"} · {writing?.who ? `${writing.who}의 일기` : ""}

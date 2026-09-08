@@ -7,7 +7,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { SceneIllustration } from "@/components/illustrations/scene";
 import { QrScanButton } from "@/components/qr-scan";
 import { useStudent } from "@/lib/student-context";
-import { BOOK, MISSIONS } from "@/content/book";
+import { BOOK, MISSIONS, missionTitle } from "@/content/book";
 import { MISSION_IDS, type MissionId, type SceneKey } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +35,7 @@ export function MissionFrame({ mission, scene, howTo, summary, children }: Props
   const [outcome, setOutcome] = useState<MissionOutcome | null>(null);
   const [runKey, setRunKey] = useState(0);
   const info = MISSIONS[mission];
+  const title = missionTitle(mission, mode === "student" ? student?.name : undefined);
   const previous = student?.missions[mission];
 
   const handleComplete: CompleteFn = async (score, details) => {
@@ -63,6 +64,7 @@ export function MissionFrame({ mission, scene, howTo, summary, children }: Props
     setRunKey((k) => k + 1);
     setOutcome(null);
     setPhase("play");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   if (phase === "play") {
@@ -83,7 +85,7 @@ export function MissionFrame({ mission, scene, howTo, summary, children }: Props
             <IconMedal className="size-14" />
           </div>
           <h1 className="mt-5 font-heading text-4xl">미션 {mission} 완료!</h1>
-          <p className="mt-2 text-lg font-medium text-muted-foreground">{info.title}</p>
+          <p className="mt-2 text-lg font-medium text-muted-foreground">{title}</p>
           <div className="mt-6 inline-flex items-baseline gap-1 rounded-2xl bg-candy-yellow px-7 py-3 text-ink sticker-sm tilt-r">
             <span className="font-heading text-5xl tabular-nums">{outcome.score}</span>
             <span className="font-heading text-xl">점</span>
@@ -117,7 +119,7 @@ export function MissionFrame({ mission, scene, howTo, summary, children }: Props
                 <p className="leading-relaxed text-muted-foreground">
                   다음은{" "}
                   <b className="font-semibold text-ink">
-                    미션 {next} · {MISSIONS[next].title}
+                    미션 {next} · {missionTitle(next, student?.name)}
                   </b>
                   {" "}— 교실에서 그 QR을 찾아 찍어요.
                 </p>
@@ -162,7 +164,7 @@ export function MissionFrame({ mission, scene, howTo, summary, children }: Props
               {info.minutes}
             </span>
           </div>
-          <h1 className="mt-3 font-heading text-4xl leading-tight">{info.title}</h1>
+          <h1 className="mt-3 font-heading text-4xl leading-tight">{title}</h1>
           <p className="mt-2 text-lg leading-relaxed text-muted-foreground">{info.description}</p>
 
           {previous && (

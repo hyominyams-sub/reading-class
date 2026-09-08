@@ -35,7 +35,7 @@ function Svg({ children, ...props }: IconProps) {
   );
 }
 
-/** 미션 1 · 달리는 두루미 루미 */
+/** 달리는 두루미 루미 */
 export function IconCrane(props: IconProps) {
   return (
     <Svg {...props}>
@@ -52,7 +52,7 @@ export function IconCrane(props: IconProps) {
   );
 }
 
-/** 미션 2 · 갈림길 이정표 */
+/** 뚱이의 선택 · 갈림길 이정표 */
 export function IconSignpost(props: IconProps) {
   return (
     <Svg {...props}>

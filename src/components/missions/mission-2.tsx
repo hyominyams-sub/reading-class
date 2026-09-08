@@ -2,13 +2,13 @@
 
 import { MissionFrame } from "@/components/mission-frame";
 import { StudentGate } from "@/components/student-gate";
-import { TextAdventure, type AdventureResult } from "@/components/missions/text-adventure";
-import { ADVENTURE } from "@/content/book";
+import { RunnerGame, type RunnerResult } from "@/components/missions/runner-game";
+import { RUNNER_QUIZ } from "@/content/book";
 
 const HOW_TO = [
-  "장면을 읽고, 지우가 되어 어떻게 할지 골라요.",
-  "배운 내용을 떠올리면 답이 보여요. 틀려도 이유를 읽고 다시 고를 수 있어요.",
-  "이야기의 끝까지 가면 미션 완료! 한 번에 고른 갈림길이 많을수록 점수가 높아요.",
+  "점프 버튼(또는 Space, 화면 터치)으로 장애물을 뛰어넘어요. 두 번 누르면 2단 점프!",
+  "슬라이드 버튼(또는 ↓)으로 날아오는 장애물 아래를 지나가요.",
+  "2분 동안 만나는 이야기 퀴즈를 풀어요. 문제를 다 풀지 못해도 시간이 되면 골인!",
 ];
 
 export function Mission2() {
@@ -16,16 +16,17 @@ export function Mission2() {
     <StudentGate>
       <MissionFrame
         mission={2}
-        scene="classroom"
+        scene="runner"
         howTo={HOW_TO}
         summary={(outcome) => {
-          const d = outcome.details as Partial<AdventureResult> | undefined;
+          const d = outcome.details as Partial<RunnerResult> | undefined;
           if (!d) return null;
           return (
-            <dl className="grid grid-cols-2 gap-2 text-center">
+            <dl className="grid grid-cols-3 gap-2 text-center">
               {[
-                ["한 번에 고른 갈림길", `${d.firstTryCorrect ?? 0} / ${d.decisionScenes ?? 0}`],
-                ["다시 생각한 횟수", `${d.wrongCount ?? 0}번`],
+                ["푼 문제", `${d.answered ?? 0} / ${d.total ?? 0}`],
+                ["정답", `${d.correct ?? 0}개`],
+                ["달린 시간", `${d.timeSec ?? 0}초`],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-xl bg-muted/70 p-3">
                   <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -36,7 +37,14 @@ export function Mission2() {
           );
         }}
       >
-        {(complete) => <TextAdventure scenes={ADVENTURE} onComplete={(result) => complete(result.score, { ...result })} />}
+        {(complete) => (
+          <RunnerGame
+            questions={RUNNER_QUIZ}
+            durationSec={120}
+            missionNumber={2}
+            onComplete={(result) => complete(result.score, { ...result })}
+          />
+        )}
       </MissionFrame>
     </StudentGate>
   );

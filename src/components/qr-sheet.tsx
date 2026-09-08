@@ -13,8 +13,8 @@ type Entry = { path: string; badge: string; title: string; desc: string; icon: R
 
 const ENTRIES: Entry[] = [
   { path: "/board", badge: "전체 현황판", title: "우리 반 미션 현황", desc: "누가 어디까지 했는지 한눈에 봐요", icon: <IconPodium className="size-5" /> },
-  { path: "/mission/1", badge: "미션 1", title: MISSIONS[1].title, desc: MISSIONS[1].subtitle, icon: <MISSION_ICONS.run className="size-5" /> },
-  { path: "/mission/2", badge: "미션 2", title: MISSIONS[2].title, desc: MISSIONS[2].subtitle, icon: <MISSION_ICONS.chat className="size-5" /> },
+  { path: "/mission/1", badge: "미션 1", title: MISSIONS[1].title, desc: MISSIONS[1].subtitle, icon: <MISSION_ICONS.chat className="size-5" /> },
+  { path: "/mission/2", badge: "미션 2", title: MISSIONS[2].title, desc: MISSIONS[2].subtitle, icon: <MISSION_ICONS.run className="size-5" /> },
   { path: "/mission/3", badge: "미션 3", title: MISSIONS[3].title, desc: MISSIONS[3].subtitle, icon: <MISSION_ICONS.pen className="size-5" /> },
 ];
 

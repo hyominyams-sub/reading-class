@@ -2,14 +2,13 @@
 
 import { MissionFrame } from "@/components/mission-frame";
 import { StudentGate } from "@/components/student-gate";
-import { RunnerGame, type RunnerResult } from "@/components/missions/runner-game";
-import { RUNNER_QUIZ } from "@/content/book";
+import { TextAdventure, type AdventureResult } from "@/components/missions/text-adventure";
+import { ADVENTURE } from "@/content/book";
 
 const HOW_TO = [
-  "점프 버튼(또는 Space, 화면 터치)으로 장애물을 뛰어넘어요. 두 번 누르면 2단 점프!",
-  "슬라이드 버튼(또는 ↓)으로 날아오는 장애물 아래를 미끄러져 지나가요.",
-  `달리다 보면 이야기 퀴즈가 나와요. ${RUNNER_QUIZ.length}문제를 모두 풀면 골인!`,
-  "마지막 단계에는 보스가 나타나요. 정답을 맞혀 보스를 물리쳐요.",
+  "그림책 속 장면을 천천히 살펴봐요.",
+  "뚱이가 되어 나라면 어떻게 할지 골라요.",
+  "다른 선택을 해도 괜찮아요. 까닭을 읽고 다시 생각해 봐요.",
 ];
 
 export function Mission1() {
@@ -17,17 +16,16 @@ export function Mission1() {
     <StudentGate>
       <MissionFrame
         mission={1}
-        scene="runner"
+        scene="ddungi-choice"
         howTo={HOW_TO}
         summary={(outcome) => {
-          const d = outcome.details as Partial<RunnerResult> | undefined;
+          const d = outcome.details as Partial<AdventureResult> | undefined;
           if (!d) return null;
           return (
-            <dl className="grid grid-cols-3 gap-2 text-center">
+            <dl className="grid grid-cols-2 gap-2 text-center">
               {[
-                ["퀴즈 정답", `${d.correct ?? 0} / ${d.total ?? 0}`],
-                ["포켓볼", `${d.coins ?? 0}개`],
-                ["시간", `${d.timeSec ?? 0}초`],
+                ["한 번에 고른 선택", `${d.firstTryCorrect ?? 0} / ${d.decisionScenes ?? 0}`],
+                ["다시 생각한 횟수", `${d.wrongCount ?? 0}번`],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-xl bg-muted/70 p-3">
                   <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -38,7 +36,13 @@ export function Mission1() {
           );
         }}
       >
-        {(complete) => <RunnerGame questions={RUNNER_QUIZ} onComplete={(result) => complete(result.score, { ...result })} />}
+        {(complete) => (
+          <TextAdventure
+            scenes={ADVENTURE}
+            protagonist="뚱이"
+            onComplete={(result) => complete(result.score, { ...result })}
+          />
+        )}
       </MissionFrame>
     </StudentGate>
   );

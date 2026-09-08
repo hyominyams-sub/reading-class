@@ -47,6 +47,7 @@ export type SceneKey =
   | "ending"
   | "diary-night"
   | "book"
+  | "ddungi-choice"
   | "runner";
 
 export type RunnerQuestion = {

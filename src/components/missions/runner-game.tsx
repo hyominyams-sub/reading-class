@@ -7,20 +7,34 @@ import type { RunnerQuestion } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /**
- * 미션 1: 2D 횡스크롤 러너 (루미 달리기)
+ * 미션 2: 2D 횡스크롤 러너 (루미 달리기)
  * - 하트/사망 없음: 장애물에 부딪히면 잠깐 휘청이고 점수만 조금 잃는다.
- * - 문제 수 = 단계 수. 마지막 문제(5단계)에서 보스가 등장한다.
+ * - 제한 시간이 끝나면 푼 문제 수와 관계없이 자동으로 골인한다.
+ * - 문제 수 = 단계 수. 마지막 문제에서 보스가 등장한다.
  * - 캐릭터 스프라이트는 /images/runner/rumi.json 매니페스트를 읽어 그린다.
  */
 
-export type RunnerResult = { score: number; correct: number; total: number; timeSec: number; coins: number };
+export type RunnerResult = {
+  score: number;
+  correct: number;
+  answered: number;
+  total: number;
+  timeSec: number;
+  coins: number;
+  endedBy: "questions" | "time";
+};
 
-type Props = { questions: RunnerQuestion[]; onComplete: (result: RunnerResult) => void };
+type Props = {
+  questions: RunnerQuestion[];
+  durationSec?: number;
+  missionNumber?: number;
+  onComplete: (result: RunnerResult) => void;
+};
 
 type Phase = "loading" | "ready" | "running" | "quiz" | "clear";
 type QuizView = { index: number; question: RunnerQuestion; isBoss: boolean; answered: { chosen: number; correct: boolean } | null };
 type Feedback = { id: number; text: string; kind: "good" | "bad" | "info" };
-type Hud = { score: number; stage: number; correct: number };
+type Hud = { score: number; stage: number; correct: number; remainingSec: number };
 
 const GAME_WIDTH = 800;
 const GAME_HEIGHT = 450;
@@ -136,11 +150,12 @@ function overlaps(a: Rect, b: Rect) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
-function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], hooks: Hooks): Engine {
+function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], durationSec: number, hooks: Hooks): Engine {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("2D 캔버스를 사용할 수 없어요.");
   const c = ctx;
   const total = questions.length;
+  const durationMs = durationSec * 1000;
   const fontFamily = getComputedStyle(canvas).fontFamily || "sans-serif";
 
   /* ---------------- 사운드 ---------------- */
@@ -278,6 +293,7 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], ho
   let coinsCollected = 0;
   let correctCount = 0;
   let quizCount = 0;
+  let currentAnswered = false;
   let startTime = 0;
   let lastQuizTime = 0;
   let lastTime = 0;
@@ -566,7 +582,13 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], ho
   }
 
   function pushHud() {
-    hooks.setHud({ score: Math.floor(score), stage: Math.min(quizCount + 1, total), correct: correctCount });
+    const elapsed = startTime ? performance.now() - startTime : 0;
+    hooks.setHud({
+      score: Math.floor(score),
+      stage: Math.min(quizCount + 1, total),
+      correct: correctCount,
+      remainingSec: Math.max(0, Math.ceil((durationMs - elapsed) / 1000)),
+    });
   }
 
   function maybeOpenQuiz() {
@@ -654,7 +676,7 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], ho
     } else {
       clearAnim += dt;
       if (clearAnim % 120 < dt) burst(Math.random() * GAME_WIDTH, Math.random() * (GAME_HEIGHT / 2), 4, ["#2563eb", "#ffd166", "#ffffff", "#ff8a7a"][Math.floor(Math.random() * 4)]);
-      if (clearAnim > 1700 && !finished) finish();
+      if (clearAnim > 1700 && !finished) finish("questions");
     }
   }
 
@@ -667,19 +689,25 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], ho
     if (!paused && running) raf = requestAnimationFrame(loop);
   }
 
-  function finish() {
+  function finish(endedBy: RunnerResult["endedBy"]) {
+    if (finished) return;
     finished = true;
     running = false;
+    paused = false;
     cancelAnimationFrame(raf);
     window.clearInterval(hudTimer);
     stopMusic();
     pushHud();
+    hooks.setQuiz(null);
+    hooks.setBossVisible(false);
     hooks.onComplete({
       score: Math.floor(score),
       correct: correctCount,
+      answered: Math.min(total, quizCount + (currentAnswered ? 1 : 0)),
       total,
-      timeSec: Math.max(0, Math.round((performance.now() - startTime) / 1000)),
+      timeSec: Math.min(durationSec, Math.max(0, Math.round((performance.now() - startTime) / 1000))),
       coins: coinsCollected,
+      endedBy,
     });
   }
 
@@ -687,7 +715,7 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], ho
     if (running || destroyed || total === 0) return;
     ensureAudio();
     running = true; paused = false; cleared = false; finished = false; bossMode = false;
-    gameSpeed = 4; score = 0; coinsCollected = 0; correctCount = 0; quizCount = 0;
+    gameSpeed = 4; score = 0; coinsCollected = 0; correctCount = 0; quizCount = 0; currentAnswered = false;
     obstacles = []; coins = []; particles = []; obstacleTimer = 0; coinTimer = 0; bossT = 0; clearAnim = 0; keys.down = false;
     player.reset();
     startTime = performance.now();
@@ -699,14 +727,18 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], ho
     hooks.setPhase("running");
     playMusic("forest");
     window.clearInterval(hudTimer);
-    hudTimer = window.setInterval(pushHud, 250);
+    hudTimer = window.setInterval(() => {
+      pushHud();
+      if (performance.now() - startTime >= durationMs) finish(cleared ? "questions" : "time");
+    }, 250);
     raf = requestAnimationFrame(loop);
   }
 
   function answer(index: number) {
-    if (!paused || cleared || quizCount >= total) return;
+    if (!paused || cleared || currentAnswered || quizCount >= total) return;
     const q = questions[quizCount];
     const correct = index === q.answer;
+    currentAnswered = true;
     if (correct) { score += SCORE.quizCorrect; correctCount += 1; playSound("correct"); }
     else playSound("hit");
     hooks.setQuiz((prev) => (prev && prev.answered === null ? { ...prev, answered: { chosen: index, correct } } : prev));
@@ -715,6 +747,7 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], ho
   function resume() {
     if (!paused || !running) return;
     quizCount += 1;
+    currentAnswered = false;
     lastQuizTime = performance.now();
     paused = false;
     hooks.setQuiz(null);
@@ -766,14 +799,14 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], ho
 
 /* ======================= React 컴포넌트 ======================= */
 
-export function RunnerGame({ questions, onComplete }: Props) {
+export function RunnerGame({ questions, durationSec = 120, missionNumber = 2, onComplete }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<Engine | null>(null);
   const onCompleteRef = useRef(onComplete);
   const feedbackId = useRef(0);
   const [phase, setPhase] = useState<Phase>("loading");
   const [quiz, setQuiz] = useState<QuizView | null>(null);
-  const [hud, setHud] = useState<Hud>({ score: 0, stage: 1, correct: 0 });
+  const [hud, setHud] = useState<Hud>({ score: 0, stage: 1, correct: 0, remainingSec: durationSec });
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [bossVisible, setBossVisible] = useState(false);
   const sound = useSyncExternalStore(subscribeSound, readSoundPref, () => false);
@@ -788,7 +821,7 @@ export function RunnerGame({ questions, onComplete }: Props) {
     if (!canvas) return;
     let engine: Engine;
     try {
-      engine = createEngine(canvas, questions, {
+      engine = createEngine(canvas, questions, durationSec, {
         setPhase,
         setQuiz,
         setHud,
@@ -805,7 +838,7 @@ export function RunnerGame({ questions, onComplete }: Props) {
       engine.destroy();
       engineRef.current = null;
     };
-  }, [questions]);
+  }, [durationSec, questions]);
 
   useEffect(() => {
     if (!feedback) return;
@@ -859,6 +892,12 @@ export function RunnerGame({ questions, onComplete }: Props) {
           <span className="hidden rounded-full bg-candy-cream px-3 py-1 font-bold text-ink/70 tabular-nums sm:inline">
             정답 {hud.correct}
           </span>
+          <span className={cn(
+            "rounded-full px-3 py-1 font-heading text-ink sticker-xs tabular-nums",
+            hud.remainingSec <= 20 ? "bg-candy-yellow" : "bg-candy-mint",
+          )}>
+            남은 시간 {Math.floor(hud.remainingSec / 60)}:{String(hud.remainingSec % 60).padStart(2, "0")}
+          </span>
         </div>
         <Button variant="outline" size="sm" onClick={toggleSound} aria-pressed={sound}>
           {sound ? <IconSound data-icon="inline-start" /> : <IconMute data-icon="inline-start" />}
@@ -900,10 +939,10 @@ export function RunnerGame({ questions, onComplete }: Props) {
         {(phase === "loading" || phase === "ready") && (
           <div className="absolute inset-0 grid place-items-center overflow-y-auto bg-ink/55 p-3">
             <div className="my-auto w-full max-w-md rounded-3xl bg-card p-4 text-center sticker candy-pop sm:p-6">
-              <p className="font-heading text-sm text-primary-strong">미션 1</p>
+              <p className="font-heading text-sm text-primary-strong">미션 {missionNumber}</p>
               <h2 className="mt-0.5 font-heading text-2xl sm:text-3xl">루미와 함께 달려요</h2>
               <p className="mt-1.5 text-sm text-muted-foreground sm:mt-2 sm:text-base">
-                점프로 장애물을 넘고, 슬라이드로 아래를 지나요. 퀴즈 {total}문제를 모두 풀면 골인!
+                {durationSec / 60}분 동안 달리며 퀴즈를 풀어요. 문제를 다 풀지 못해도 시간이 되면 골인!
               </p>
               <div className="mt-3 hidden flex-wrap justify-center gap-2 text-xs text-muted-foreground sm:flex">
                 <span className="rounded-full bg-candy-cream px-2.5 py-1 font-medium">화면 터치 · Space = 점프 (두 번이면 2단 점프)</span>

@@ -48,6 +48,7 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
   const scene = useMemo(() => config.scenes.find((s) => s.id === sceneId) ?? null, [config.scenes, sceneId]);
   const chars = countChars(text);
   const enough = chars >= config.minChars;
+  const diaryTitle = !isGuest && studentName.trim() ? `${studentName.trim()}의 마음 일기` : "나의 마음 일기";
   const dateLabel = useMemo(
     () => new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" }).format(new Date()),
     [],
@@ -135,7 +136,7 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
                   <SceneIllustration scene={s.scene} className="h-full w-full" />
                 </div>
                 <div className="flex flex-1 flex-col justify-center p-5">
-                  <p className="text-sm font-heading text-primary-strong">{s.who}의 마음</p>
+                  <p className="text-sm font-heading text-primary-strong">내 마음 돌아보기</p>
                   <p className="mt-0.5 text-xl font-bold">{s.label}</p>
                   <p className="mt-2 leading-relaxed text-muted-foreground">{s.situation}</p>
                   <span className="mt-3 inline-flex items-center gap-1 text-sm font-heading text-primary-strong">
@@ -150,7 +151,7 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
 
       {step === 1 && scene && (
         <section className="animate-in fade-in">
-          <h1 className="font-heading text-3xl">{scene.who}의 마음은 어땠을까요?</h1>
+          <h1 className="font-heading text-3xl">그때 내 마음은 어땠을까요?</h1>
           <p className="mt-1 text-muted-foreground">어울리는 감정 낱말을 1~3개 골라요. {scene.hint}</p>
           <div className="mt-5 flex flex-wrap gap-2.5">
             {config.feelings.map((word) => {
@@ -197,7 +198,7 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
             </div>
             <div className="p-4 sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xl font-bold">{scene.who}의 일기</p>
+                <p className="text-xl font-bold">{diaryTitle}</p>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span>{dateLabel}</span>
                   <span className="flex gap-1">
@@ -225,7 +226,7 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
                 ref={textareaRef}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder={`${scene.who}이/가 되어 오늘 있었던 일과 마음을 써 보세요.\n예) 오늘 나는 … 마음이 들었다. 왜냐하면 …`}
+                placeholder={`그 장면을 만난 내 마음을 써 보세요.\n예) 그 장면에서 나는 … 마음이 들었다. 왜냐하면 …`}
                 className="paper-lines mt-3 min-h-64 resize-y rounded-2xl border-[2.5px] border-ink px-4 py-0 text-lg leading-[36px] shadow-[3px_3px_0_0_var(--ink)] focus-visible:ring-3 focus-visible:ring-ring/50 sm:text-lg"
                 spellCheck={false}
               />
@@ -273,7 +274,7 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
             </div>
             <div className="p-5 sm:p-7">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="text-xl font-bold">{scene.who}의 일기</p>
+                <p className="text-xl font-bold">{diaryTitle}</p>
                 <p className="text-sm text-muted-foreground">
                   {dateLabel} · 날씨 {weather} · 쓴 사람 {studentName}
                 </p>

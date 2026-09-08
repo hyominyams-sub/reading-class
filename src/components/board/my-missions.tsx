@@ -4,7 +4,7 @@ import Link from "next/link";
 import { IconCheck, IconMedal, IconQr, IconRedo, IconStar, MISSION_ICONS } from "@/components/candy-icons";
 import { QrScanButton } from "@/components/qr-scan";
 import { buttonVariants } from "@/components/ui/button";
-import { MISSIONS } from "@/content/book";
+import { MISSIONS, missionTitle } from "@/content/book";
 import {
   completedCount,
   isCleared,
@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
  */
 
 /* 각 활동이 저장하는 details 모양 (mission-1/2/3의 result와 같음) */
-type RunnerDetails = { correct?: number; total?: number; timeSec?: number; coins?: number };
+type RunnerDetails = { correct?: number; answered?: number; total?: number; timeSec?: number; coins?: number };
 type AdventureDetails = { firstTryCorrect?: number; decisionScenes?: number; wrongCount?: number };
 type WritingDetails = {
   sceneLabel?: string;
@@ -51,15 +51,15 @@ function statsOf(id: MissionId, result: MissionResult): { label: string; value: 
   const d = (result.details ?? {}) as RunnerDetails & AdventureDetails & WritingDetails;
   if (id === 1) {
     return [
-      { label: "퀴즈 정답", value: `${d.correct ?? 0}/${d.total ?? 0}` },
-      { label: "걸린 시간", value: `${d.timeSec ?? 0}초` },
-      { label: "포켓볼", value: `${d.coins ?? 0}개` },
+      { label: "한 번에 고른 답", value: `${d.firstTryCorrect ?? 0}/${d.decisionScenes ?? 0}` },
+      { label: "다시 고른 횟수", value: `${d.wrongCount ?? 0}번` },
     ];
   }
   if (id === 2) {
     return [
-      { label: "한 번에 고른 답", value: `${d.firstTryCorrect ?? 0}/${d.decisionScenes ?? 0}` },
-      { label: "다시 고른 횟수", value: `${d.wrongCount ?? 0}번` },
+      { label: "푼 문제", value: `${d.answered ?? 0}/${d.total ?? 0}` },
+      { label: "퀴즈 정답", value: `${d.correct ?? 0}개` },
+      { label: "걸린 시간", value: `${d.timeSec ?? 0}초` },
     ];
   }
   return [
@@ -134,7 +134,14 @@ export function MyMissions({ student }: { student: StudentRecord }) {
       {/* ── 미션별 내 결과 ── */}
       <ul className="mt-5 grid gap-4">
         {MISSION_IDS.map((id, i) => (
-          <MyMissionCard key={id} id={id} result={student.missions[id]} isNext={id === next} tilt={i % 2 === 0 ? "tilt-l" : "tilt-r"} />
+          <MyMissionCard
+            key={id}
+            id={id}
+            studentName={student.name}
+            result={student.missions[id]}
+            isNext={id === next}
+            tilt={i % 2 === 0 ? "tilt-l" : "tilt-r"}
+          />
         ))}
       </ul>
     </section>
@@ -143,17 +150,20 @@ export function MyMissions({ student }: { student: StudentRecord }) {
 
 function MyMissionCard({
   id,
+  studentName,
   result,
   isNext,
   tilt,
 }: {
   id: MissionId;
+  studentName: string;
   result: MissionResult | undefined;
   isNext: boolean;
   tilt: string;
 }) {
   const info = MISSIONS[id];
   const Icon = MISSION_ICONS[info.icon];
+  const title = missionTitle(id, studentName);
   const at = result ? timeLabel(result.completedAt) : "";
 
   return (
@@ -183,7 +193,7 @@ function MyMissionCard({
             )}
             {!result && !isNext && <span className="text-xs font-bold text-muted-foreground">· {info.minutes}</span>}
           </p>
-          <p className="mt-0.5 font-heading text-2xl leading-snug">{info.title}</p>
+          <p className="mt-0.5 font-heading text-2xl leading-snug">{title}</p>
           {result ? (
             <p className="mt-1 text-sm font-medium text-muted-foreground">
               {at && `${at} 완료`}

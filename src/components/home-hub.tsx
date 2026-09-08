@@ -6,7 +6,7 @@ import { ProgressDots } from "@/components/progress-dots";
 import { QrScanButton } from "@/components/qr-scan";
 import { IconCheck, IconLollipop, IconQr, IconStar, MISSION_ICONS } from "@/components/candy-icons";
 import { useStudent } from "@/lib/student-context";
-import { BOOK, MISSIONS } from "@/content/book";
+import { BOOK, MISSIONS, missionTitle } from "@/content/book";
 import { completedCount, isCleared, MISSION_IDS, type MissionId, type StudentRecord } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -115,6 +115,7 @@ function MissionCard({ id, student, guest, tilt }: { id: MissionId; student: Stu
   const info = MISSIONS[id];
   const done = student.missions[id];
   const Icon = MISSION_ICONS[info.icon];
+  const title = missionTitle(id, guest ? undefined : student.name);
   const content = (
     <>
       <span
@@ -134,7 +135,7 @@ function MissionCard({ id, student, guest, tilt }: { id: MissionId; student: Stu
             {info.minutes}
           </span>
         </span>
-        <span className="mt-0.5 block font-heading text-xl leading-snug">{info.title}</span>
+        <span className="mt-0.5 block font-heading text-xl leading-snug">{title}</span>
         <span
           className={cn(
             "mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold text-ink",

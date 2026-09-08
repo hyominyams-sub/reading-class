@@ -503,16 +503,12 @@ const SCENES: Record<SceneKey, { title: string; render: () => React.ReactNode }>
   rain: { title: "비 오는 운동회", render: SportsDayRain },
   ending: { title: "우리 반 친구 하늘이", render: Ending },
   "diary-night": { title: "일기 쓰는 밤", render: DiaryNight },
-  book: { title: "책", render: BookStack },
+  book: { title: "아직 펼쳐지지 않은 그림책", render: BookStack },
+  "ddungi-choice": { title: "갈림길에서 함께 생각하는 뚱이와 루미", render: BookStack },
   runner: { title: "루미 달리기", render: RunnerScene },
 };
 
-/**
- * 힉스필드(nano_banana_2)로 그린 래스터 삽화가 있는 장면.
- * 다시 만들려면 `./scripts/gen-scenes.sh <키>` — 인물 디자인은
- * scripts/ref/cast-sheet.png 를 레퍼런스로 넘겨 고정한다.
- * 여기 없는 키는 아래 SVG 삽화로 그린다.
- */
+/** 생성 삽화가 있는 장면. 여기 없는 키는 아래 SVG 플레이스홀더로 그린다. */
 const SCENE_ART = new Set<SceneKey>([
   "classroom",
   "lunch",
@@ -522,9 +518,13 @@ const SCENE_ART = new Set<SceneKey>([
   "rain",
   "ending",
   "diary-night",
-  "book",
+  "ddungi-choice",
   "runner",
 ]);
+
+const SCENE_ART_PATH: Partial<Record<SceneKey, string>> = {
+  runner: "/images/scenes/runner-rumi.png",
+};
 
 /** 생성 원본 크기 (21:9, 1k) */
 const ART_W = 1584;
@@ -536,12 +536,12 @@ export function SceneIllustration({ scene, className }: { scene: SceneKey; class
   if (SCENE_ART.has(scene)) {
     return (
       <Image
-        src={`/images/scenes/${scene}.png`}
+        src={SCENE_ART_PATH[scene] ?? `/images/scenes/${scene}.png`}
         alt={def.title}
         width={ART_W}
         height={ART_H}
         sizes="(max-width: 768px) 100vw, 768px"
-        preload={scene === "book"}
+        preload={scene === "ddungi-choice"}
         className={cn("object-cover", className ?? "h-auto w-full")}
       />
     );

@@ -16,12 +16,13 @@ export type AdventureResult = {
 
 type Props = {
   scenes: AdventureScene[];
+  protagonist?: string;
   onComplete: (result: AdventureResult) => void;
 };
 
 const LETTERS = ["①", "②", "③", "④", "⑤"];
 
-export function TextAdventure({ scenes, onComplete }: Props) {
+export function TextAdventure({ scenes, protagonist = "주인공", onComplete }: Props) {
   const byId = useMemo(() => new Map(scenes.map((s) => [s.id, s])), [scenes]);
   const decisionScenes = useMemo(() => scenes.filter((s) => s.choices && s.choices.length > 0).length, [scenes]);
 
@@ -60,7 +61,7 @@ export function TextAdventure({ scenes, onComplete }: Props) {
         <span className="rounded-full bg-candy-pink px-3.5 py-1 font-heading text-ink sticker-xs">
           장면 {stepIndex} / {scenes.length}
         </span>
-        <span className="font-medium text-muted-foreground">주인공: 지우</span>
+        <span className="font-medium text-muted-foreground">주인공: {protagonist}</span>
       </div>
       <div className="mb-4 flex gap-1" aria-hidden>
         {scenes.map((s, i) => (
@@ -107,7 +108,7 @@ export function TextAdventure({ scenes, onComplete }: Props) {
             </div>
           ) : (
             <div className="mt-6">
-              <p className="font-heading text-primary-strong">지우는 어떻게 할까요?</p>
+              <p className="font-heading text-primary-strong">{protagonist}라면 어떻게 할까요?</p>
               <div className="mt-3 grid gap-2.5">
                 {scene.choices?.map((choice, i) => (
                   <button
