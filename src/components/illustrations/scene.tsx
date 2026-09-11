@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { SceneKey } from "@/lib/types";
+import { hasSceneIllustration } from "@/content/scene-assets";
 import { cn } from "@/lib/utils";
 
 /**
@@ -506,6 +507,14 @@ const SCENES: Record<SceneKey, { title: string; render: () => React.ReactNode }>
   book: { title: "아직 펼쳐지지 않은 그림책", render: BookStack },
   "ddungi-choice": { title: "갈림길에서 함께 생각하는 뚱이와 루미", render: BookStack },
   runner: { title: "루미 달리기", render: RunnerScene },
+  "jangdae-conflict": { title: "장대공원에서 겪은 갈등", render: BookStack },
+  "jangdae-listening": { title: "서로의 말 듣기", render: BookStack },
+  "jangdae-reconciliation": { title: "장대공원에서의 화해", render: BookStack },
+  "boksagol-question": { title: "복사골의 고문서", render: BookStack },
+  "ancient-document": { title: "고문서", render: BookStack },
+  "beomam-story": { title: "범암마을의 1813년 대해일", render: BookStack },
+  "today-typhoon": { title: "오늘날 태풍을 떠올리며", render: BookStack },
+  "treasure-reflection": { title: "책 속 보물, 나의 보물", render: BookStack },
 };
 
 /** 생성 삽화가 있는 장면. 여기 없는 키는 아래 SVG 플레이스홀더로 그린다. */
@@ -531,6 +540,7 @@ const ART_W = 1584;
 const ART_H = 672;
 
 export function SceneIllustration({ scene, className }: { scene: SceneKey; className?: string }) {
+  if (!hasSceneIllustration(scene)) return null;
   const def = SCENES[scene];
 
   if (SCENE_ART.has(scene)) {

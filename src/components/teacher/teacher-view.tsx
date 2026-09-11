@@ -13,10 +13,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { MISSIONS, WRITING } from "@/content/book";
-import { completedCount, isCleared, MISSION_IDS, type StudentRecord } from "@/lib/types";
+import { completedCount, currentMissionResult, isCleared, MISSION_IDS, type StudentRecord } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type WritingDetails = { sceneId?: string; sceneLabel?: string; who?: string; feelings?: string[]; text?: string; chars?: number };
+type DecisionRow = { sceneId?: string; sceneTitle?: string; firstChoiceIndex?: number; firstChoiceText?: string; finalChoiceIndex?: number; finalChoiceText?: string; reconsiderations?: number; feedback?: string };
+type AnswerRow = { questionId?: string; question?: string; chosenText?: string; answerIndex?: number; correct?: boolean; explain?: string };
+
+function safeText(value: unknown, fallback: string): string {
+  return typeof value === "string" || typeof value === "number" || typeof value === "boolean" ? String(value) : fallback;
+}
 
 function timeLabel(iso: string) {
   if (!iso) return "-";
@@ -28,8 +34,20 @@ function missionSummary(student: StudentRecord, id: 1 | 2 | 3): string {
   const r = student.missions[id];
   if (!r) return "";
   const d = (r.details ?? {}) as Record<string, unknown>;
-  if (id === 1 && typeof d.firstTryCorrect === "number" && typeof d.decisionScenes === "number") return `첫 선택 ${d.firstTryCorrect}/${d.decisionScenes}`;
-  if (id === 2 && typeof d.correct === "number" && typeof d.answered === "number") return `정답 ${d.correct}/${d.answered}`;
+  if (id === 1) {
+    const scenes = Array.isArray(d.decisions) ? d.decisions : [];
+    const total = typeof d.decisionScenes === "number" ? d.decisionScenes : scenes.length;
+    const first = typeof d.firstTryCorrect === "number"
+      ? d.firstTryCorrect
+      : scenes.filter((scene) => scene && typeof scene === "object" && (scene as { firstChoiceIndex?: unknown }).firstChoiceIndex === (scene as { finalChoiceIndex?: unknown }).finalChoiceIndex).length;
+    if (total) return `선택한 장면 ${total}곳 · 첫 선택 ${first}/${total}`;
+  }
+  if (id === 2) {
+    const answers = Array.isArray(d.answers) ? d.answers : [];
+    const answered = typeof d.answered === "number" ? d.answered : answers.length;
+    const correct = typeof d.correct === "number" ? d.correct : answers.filter((answer) => answer && typeof answer === "object" && (answer as { correct?: unknown }).correct === true).length;
+    if (answered) return `맞힌 문제 ${correct}/${answered}`;
+  }
   if (id === 3 && typeof d.chars === "number") return `${d.chars}자`;
   return "";
 }
@@ -39,6 +57,7 @@ export function TeacherView() {
   const [resetOpen, setResetOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [viewing, setViewing] = useState<StudentRecord | null>(null);
+  const [viewingMission, setViewingMission] = useState<1 | 2 | 3 | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -72,7 +91,19 @@ export function TeacherView() {
   }
 
   const list = students ?? [];
-  const writing = (viewing?.missions[3]?.details ?? null) as WritingDetails | null;
+  const viewedResult = viewing && viewingMission ? viewing.missions[viewingMission] : undefined;
+  const viewedDetails = (viewedResult?.details ?? {}) as Record<string, unknown>;
+  const writing = viewingMission === 3 ? viewedDetails as WritingDetails : null;
+  const decisions = Array.isArray(viewedDetails.decisions) ? viewedDetails.decisions.flatMap((row): DecisionRow[] => {
+    if (!row || typeof row !== "object") return [];
+    const item = row as Record<string, unknown>;
+    return [{ sceneId: safeText(item.sceneId, "scene"), sceneTitle: safeText(item.sceneTitle, "장면"), firstChoiceText: safeText(item.firstChoiceText, "기록 없음"), finalChoiceText: safeText(item.finalChoiceText, "기록 없음"), reconsiderations: typeof item.reconsiderations === "number" ? item.reconsiderations : 0, feedback: typeof item.feedback === "string" ? item.feedback : undefined }];
+  }) : [];
+  const answers = Array.isArray(viewedDetails.answers) ? viewedDetails.answers.flatMap((row): AnswerRow[] => {
+    if (!row || typeof row !== "object") return [];
+    const item = row as Record<string, unknown>;
+    return [{ questionId: safeText(item.questionId, "question"), question: safeText(item.question, "문제"), chosenText: safeText(item.chosenText, "고른 답 없음"), correct: item.correct === true, explain: typeof item.explain === "string" ? item.explain : undefined }];
+  }) : [];
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:py-8">
@@ -102,7 +133,7 @@ export function TeacherView() {
           ["참여", `${list.length}명`],
           ["클리어", `${list.filter(isCleared).length}명`],
           ["미션 완료 수", `${list.reduce((s, st) => s + completedCount(st), 0)}개`],
-          ["글쓰기 제출", `${list.filter((s) => s.missions[3]).length}편`],
+          ["글쓰기 제출", `${list.filter((s) => Boolean(currentMissionResult(s, 3))).length}편`],
         ].map(([label, value]) => (
           <div key={label} className="rounded-2xl bg-card p-4 sticker">
             <p className="text-sm text-muted-foreground">{label}</p>
@@ -142,17 +173,21 @@ export function TeacherView() {
                 <td className="px-4 py-3 text-muted-foreground tabular-nums">{timeLabel(s.createdAt)}</td>
                 {MISSION_IDS.map((id) => {
                   const r = s.missions[id];
+                  const current = currentMissionResult(s, id);
                   return (
                     <td key={id} className="px-4 py-3">
                       {r ? (
                         <div className="flex items-center gap-2">
-                          <span className="rounded-full border-2 border-ink bg-candy-mint px-2 py-0.5 text-xs font-bold text-ink">{r.score}점</span>
-                          <span className="text-muted-foreground">{missionSummary(s, id)}</span>
-                          {id === 3 && (
-                            <Button variant="outline" size="xs" onClick={() => setViewing(s)}>
-                              <IconEye data-icon="inline-start" /> 글 보기
-                            </Button>
+                          {id === 3 ? (
+                            <span className={cn("rounded-full border-2 border-ink px-2 py-0.5 text-xs font-bold text-ink", current ? "bg-candy-mint" : "bg-candy-cream")}>{current ? "작성 완료" : "작성 기록"}</span>
+                          ) : (
+                            <span className="rounded-full border-2 border-ink bg-candy-mint px-2 py-0.5 text-xs font-bold text-ink">{r.score}점</span>
                           )}
+                          {!current && <span className="rounded-full bg-candy-cream px-2 py-0.5 text-xs font-semibold text-muted-foreground">이전 활동</span>}
+                          <span className="text-muted-foreground">{missionSummary(s, id)}</span>
+                          <Button variant="outline" size="xs" onClick={() => { setViewing(s); setViewingMission(id); }}>
+                            <IconEye data-icon="inline-start" /> {id === 3 ? "글 보기" : "기록 보기"}
+                            </Button>
                         </div>
                       ) : (
                         <span className="text-muted-foreground">-</span>
@@ -194,18 +229,41 @@ export function TeacherView() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={viewing !== null} onOpenChange={(open) => !open && setViewing(null)}>
+      <Dialog open={viewing !== null && viewingMission !== null} onOpenChange={(open) => { if (!open) { setViewing(null); setViewingMission(null); } }}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {viewing?.name ? `${viewing.name}의 마음 일기` : WRITING.title}
+              {viewing?.name ? `${viewing.name} · ${viewingMission === 3 ? (currentMissionResult(viewing, 3) ? WRITING.title : "이전 활동 기록") : MISSIONS[viewingMission ?? 1].title}` : WRITING.title}
             </DialogTitle>
             <DialogDescription>
-              {writing?.sceneLabel ?? "장면"} · {writing?.who ? `${writing.who}의 일기` : ""}
+              {viewingMission === 3 ? `${writing?.sceneLabel ?? "장면"} · ${writing?.who ? `${writing.who}의 보물글` : "보물글"}` : "학생이 선택하고 답한 기록이에요."}
               {writing?.chars ? ` · ${writing.chars}자` : ""}
             </DialogDescription>
           </DialogHeader>
-          {writing?.feelings && writing.feelings.length > 0 && (
+          {viewingMission === 1 && (
+            <div className="max-h-[50vh] space-y-3 overflow-y-auto pr-1">
+              {decisions.length ? decisions.map((decision, index) => (
+                <div key={`${decision.sceneId ?? "scene"}-${index}`} className="rounded-2xl bg-candy-cream p-3 text-sm">
+                  <p className="font-bold">{decision.sceneTitle ?? `장면 ${index + 1}`}</p>
+                  <p className="mt-1">첫 선택: {decision.firstChoiceText ?? "기록 없음"}</p>
+                  <p>최종 선택: {decision.finalChoiceText ?? "기록 없음"} · 다시 고른 횟수 {decision.reconsiderations ?? 0}번</p>
+                  {decision.feedback && <p className="mt-1 text-muted-foreground">{decision.feedback}</p>}
+                </div>
+              )) : <p className="text-sm text-muted-foreground">선택 상세 기록이 없어요.</p>}
+            </div>
+          )}
+          {viewingMission === 2 && (
+            <div className="max-h-[50vh] space-y-3 overflow-y-auto pr-1">
+              {answers.length ? answers.map((answer, index) => (
+                <div key={`${answer.questionId ?? "question"}-${index}`} className="rounded-2xl bg-candy-cream p-3 text-sm">
+                  <p className="font-bold">{answer.question ?? `문제 ${index + 1}`}</p>
+                  <p className={answer.correct ? "text-green-700" : "text-destructive"}>{answer.chosenText ?? "고른 답 없음"} · {answer.correct ? "맞힘" : "다시 살펴볼 문제"}</p>
+                  {answer.explain && <p className="mt-1 text-muted-foreground">{answer.explain}</p>}
+                </div>
+              )) : <p className="text-sm text-muted-foreground">문항별 기록이 없어요.</p>}
+            </div>
+          )}
+          {viewingMission === 3 && writing?.feelings && writing.feelings.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {writing.feelings.map((f) => (
                 <span key={f} className="rounded-full bg-candy-blue px-2.5 py-0.5 text-xs font-bold text-ink">
@@ -214,9 +272,11 @@ export function TeacherView() {
               ))}
             </div>
           )}
-          <div className="paper-lines max-h-[50vh] overflow-y-auto rounded-xl border p-4 text-base leading-[36px] whitespace-pre-wrap">
-            {writing?.text ?? "저장된 글이 없어요."}
-          </div>
+          {viewingMission === 3 && (
+            <div className="paper-lines max-h-[50vh] overflow-y-auto rounded-xl border p-4 text-base leading-[36px] whitespace-pre-wrap">
+              {writing?.text ?? "저장된 글이 없어요."}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </main>

@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { IconArrow, IconArrowLeft, IconCheck, IconCloud, IconCloudRain, IconSend, IconSun } from "@/components/candy-icons";
+import { IconArrow, IconArrowLeft, IconCheck, IconSend } from "@/components/candy-icons";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SceneIllustration } from "@/components/illustrations/scene";
+import { hasSceneIllustration } from "@/content/scene-assets";
+import { missionTitle } from "@/content/book";
 import type { WritingConfig, WritingScene } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -26,13 +28,7 @@ type Props = {
   onComplete: (result: WritingResult) => void;
 };
 
-const STEPS = ["장면 고르기", "마음 고르기", "일기 쓰기", "확인하기"];
-const WEATHERS = [
-  { key: "맑음", icon: IconSun },
-  { key: "흐림", icon: IconCloud },
-  { key: "비", icon: IconCloudRain },
-] as const;
-
+const STEPS = ["장면 고르기", "마음 고르기", "글쓰기", "확인하기"];
 function countChars(text: string) {
   return text.replace(/\s/g, "").length;
 }
@@ -43,12 +39,15 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
   const [feelings, setFeelings] = useState<string[]>([]);
   const [weather, setWeather] = useState<string>("맑음");
   const [text, setText] = useState("");
+  const [isComposing, setIsComposing] = useState(false);
+  const submittedRef = useRef(false);
+  const composingRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const scene = useMemo(() => config.scenes.find((s) => s.id === sceneId) ?? null, [config.scenes, sceneId]);
   const chars = countChars(text);
   const enough = chars >= config.minChars;
-  const diaryTitle = !isGuest && studentName.trim() ? `${studentName.trim()}의 마음 일기` : "나의 마음 일기";
+  const diaryTitle = missionTitle(3, isGuest ? undefined : studentName);
   const dateLabel = useMemo(
     () => new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" }).format(new Date()),
     [],
@@ -70,6 +69,7 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
   }
 
   function insertStarter(starter: string) {
+    if (composingRef.current) return;
     const el = textareaRef.current;
     const start = el?.selectionStart ?? text.length;
     const end = el?.selectionEnd ?? start;
@@ -88,7 +88,8 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
   }
 
   function submit() {
-    if (!scene) return;
+    if (composingRef.current || !scene || feelings.length === 0 || !enough || submittedRef.current) return;
+    submittedRef.current = true;
     onComplete({
       score: 100,
       sceneId: scene.id,
@@ -99,6 +100,11 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
       text: text.trim(),
       chars,
     });
+  }
+
+  function goToPreview() {
+    if (composingRef.current || !scene || feelings.length === 0 || !enough) return;
+    setStep(3);
   }
 
   return (
@@ -132,9 +138,11 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
                 onClick={() => pickScene(s)}
                 className="group flex flex-col overflow-hidden rounded-2xl bg-card text-left sticker transition-colors hover:ring-primary sm:flex-row"
               >
-                <div className="aspect-[2/1] w-full sm:aspect-auto sm:w-56 sm:shrink-0">
-                  <SceneIllustration scene={s.scene} className="h-full w-full" />
-                </div>
+                {hasSceneIllustration(s.scene) && (
+                  <div className="aspect-[2/1] w-full sm:aspect-auto sm:w-56 sm:shrink-0">
+                    <SceneIllustration scene={s.scene} className="h-full w-full" />
+                  </div>
+                )}
                 <div className="flex flex-1 flex-col justify-center p-5">
                   <p className="text-sm font-heading text-primary-strong">내 마음 돌아보기</p>
                   <p className="mt-0.5 text-xl font-bold">{s.label}</p>
@@ -152,7 +160,10 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
       {step === 1 && scene && (
         <section className="animate-in fade-in">
           <h1 className="font-heading text-3xl">그때 내 마음은 어땠을까요?</h1>
-          <p className="mt-1 text-muted-foreground">어울리는 감정 낱말을 1~3개 골라요. {scene.hint}</p>
+          <p className="mt-1 text-muted-foreground">어울리는 감정 낱말을 1~3개 골라요.</p>
+          <div className="mt-4 rounded-2xl bg-candy-cream px-4 py-3 text-sm leading-relaxed text-ink">
+            <span className="font-bold">장면 힌트</span> · {scene.hint}
+          </div>
           <div className="mt-5 flex flex-wrap gap-2.5">
             {config.feelings.map((word) => {
               const on = feelings.includes(word);
@@ -178,7 +189,7 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
               <IconArrowLeft data-icon="inline-start" /> 이전
             </Button>
             <Button size="lg" className="flex-1" disabled={feelings.length === 0} onClick={() => setStep(2)}>
-              일기 쓰러 가기 <IconArrow data-icon="inline-end" />
+              글 쓰러 가기 <IconArrow data-icon="inline-end" />
             </Button>
           </div>
         </section>
@@ -188,9 +199,11 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
         <section className="animate-in fade-in">
           <div className="overflow-hidden rounded-3xl bg-card sticker">
             <div className="flex items-center gap-4 border-b p-4">
-              <div className="aspect-[4/3] w-24 shrink-0 overflow-hidden rounded-lg">
-                <SceneIllustration scene={scene.scene} className="h-full w-full" />
-              </div>
+              {hasSceneIllustration(scene.scene) && (
+                <div className="aspect-[4/3] w-24 shrink-0 overflow-hidden rounded-lg">
+                  <SceneIllustration scene={scene.scene} className="h-full w-full" />
+                </div>
+              )}
               <div>
                 <p className="text-sm font-heading text-primary-strong">{scene.label}</p>
                 <p className="leading-snug text-muted-foreground">{scene.situation}</p>
@@ -199,50 +212,47 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
             <div className="p-4 sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xl font-bold">{diaryTitle}</p>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>{dateLabel}</span>
-                  <span className="flex gap-1">
-                    {WEATHERS.map(({ key, icon: Icon }) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => setWeather(key)}
-                        aria-pressed={weather === key}
-                        aria-label={`날씨 ${key}`}
-                        className={cn("grid size-8 place-items-center rounded-full border", weather === key ? "border-ink bg-candy-yellow text-ink" : "border-ink bg-card")}
-                      >
-                        <Icon className="size-4" />
-                      </button>
-                    ))}
-                  </span>
-                </div>
+                <span className="text-sm text-muted-foreground">{dateLabel}</span>
               </div>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {feelings.map((f) => (
                   <span key={f} className="rounded-full bg-candy-blue px-2.5 py-0.5 text-xs font-bold text-ink">{f}</span>
                 ))}
               </div>
+              <p className="mt-4 text-base font-semibold leading-relaxed text-ink">
+                {config.prompt ?? "내가 생각한 보물은 무엇인가요? 소중한 까닭도 써 봐요."}
+              </p>
               <Textarea
                 ref={textareaRef}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder={`그 장면을 만난 내 마음을 써 보세요.\n예) 그 장면에서 나는 … 마음이 들었다. 왜냐하면 …`}
+                onCompositionStart={() => {
+                  composingRef.current = true;
+                  setIsComposing(true);
+                }}
+                onCompositionEnd={() => {
+                  composingRef.current = false;
+                  setIsComposing(false);
+                }}
+                placeholder={config.placeholder ?? "보물과 소중한 까닭을 이어서 써 보세요."}
                 className="paper-lines mt-3 min-h-64 resize-y rounded-2xl border-[2.5px] border-ink px-4 py-0 text-lg leading-[36px] shadow-[3px_3px_0_0_var(--ink)] focus-visible:ring-3 focus-visible:ring-ring/50 sm:text-lg"
                 spellCheck={false}
               />
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span className="text-sm text-muted-foreground">문장 시작 도움:</span>
                 {config.starters.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => insertStarter(s)}
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => insertStarter(s)}
+                      disabled={isComposing}
                     className="rounded-full bg-card px-3 py-1 text-sm font-bold text-ink sticker-xs sticker-press hover:bg-candy-cream"
                   >
                     {s}
                   </button>
                 ))}
               </div>
+              {config.experienceHint && <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{config.experienceHint}</p>}
               <div className="mt-3 flex items-center justify-between text-sm">
                 <span className={cn("font-medium tabular-nums", enough ? "text-ink" : "text-muted-foreground")}>
                   공백 제외 {chars}자 / 최소 {config.minChars}자
@@ -255,7 +265,7 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
             <Button variant="outline" size="lg" onClick={() => setStep(1)}>
               <IconArrowLeft data-icon="inline-start" /> 이전
             </Button>
-            <Button size="lg" className="flex-1" disabled={!enough} onClick={() => setStep(3)}>
+            <Button size="lg" className="flex-1" disabled={!enough || isComposing} onClick={goToPreview}>
               다 썼어요 <IconArrow data-icon="inline-end" />
             </Button>
           </div>
@@ -266,17 +276,19 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
         <section className="animate-in fade-in">
           <h1 className="font-heading text-3xl">{isGuest ? "이대로 완성할까요?" : "이렇게 제출할까요?"}</h1>
           <p className="mt-1 text-muted-foreground">
-            {isGuest ? "게스트 일기를 완성해요. 체험 기록은 선생님께 제출되지 않아요." : "제출하면 선생님이 읽어 볼 수 있어요."}
+            {isGuest ? "이 글을 완성해요. 체험 기록은 선생님께 제출되지 않아요." : "제출하면 선생님이 읽어 볼 수 있어요."}
           </p>
           <article className="mt-4 overflow-hidden rounded-3xl bg-card sticker">
-            <div className="aspect-[21/9]">
-              <SceneIllustration scene={scene.scene} className="h-full w-full" />
-            </div>
+            {hasSceneIllustration(scene.scene) && (
+              <div className="aspect-[21/9]">
+                <SceneIllustration scene={scene.scene} className="h-full w-full" />
+              </div>
+            )}
             <div className="p-5 sm:p-7">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <p className="text-xl font-bold">{diaryTitle}</p>
                 <p className="text-sm text-muted-foreground">
-                  {dateLabel} · 날씨 {weather} · 쓴 사람 {studentName}
+                  {dateLabel} · 쓴 사람 {studentName || "나"}
                 </p>
               </div>
               <div className="mt-2 flex flex-wrap gap-1.5">

@@ -7,7 +7,7 @@ import { QrScanButton } from "@/components/qr-scan";
 import { IconCheck, IconLollipop, IconQr, IconStar, MISSION_ICONS } from "@/components/candy-icons";
 import { useStudent } from "@/lib/student-context";
 import { BOOK, MISSIONS, missionTitle } from "@/content/book";
-import { completedCount, isCleared, MISSION_IDS, type MissionId, type StudentRecord } from "@/lib/types";
+import { completedCount, currentMissionResult, isCleared, MISSION_IDS, type MissionId, type StudentRecord } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /** 미션마다 고유한 사탕 색을 준다 — 카드가 서로 구분되도록. */
@@ -113,7 +113,7 @@ export function HomeHub() {
 /** 미션 카드는 안내판이다 — 들어가는 문은 교실에 붙은 QR뿐. */
 function MissionCard({ id, student, guest, tilt }: { id: MissionId; student: StudentRecord; guest: boolean; tilt: string }) {
   const info = MISSIONS[id];
-  const done = student.missions[id];
+  const done = currentMissionResult(student, id);
   const Icon = MISSION_ICONS[info.icon];
   const title = missionTitle(id, guest ? undefined : student.name);
   const content = (
@@ -142,7 +142,7 @@ function MissionCard({ id, student, guest, tilt }: { id: MissionId; student: Stu
             done ? "bg-candy-mint" : "bg-candy-cream",
           )}
         >
-          {done ? `완료 · ${done.score}점` : guest ? `게임 ${id} 시작하기` : `미션 ${id} QR을 찾아 찍으면 시작!`}
+          {done ? (id === 3 ? "작성 완료" : `완료 · ${done.score}점`) : guest ? `게임 ${id} 시작하기` : `미션 ${id} QR을 찾아 찍으면 시작!`}
         </span>
       </span>
     </>

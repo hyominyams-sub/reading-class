@@ -13,9 +13,9 @@
 
 | | 미션 | 활동 |
 |---|---|---|
-| 1 | 뚱이라면 어떻게 할까? | 갈림길마다 선택하는 2분 생각 활동 |
-| 2 | 루미와 함께 달려요 | 2분 픽셀 러너 + 이야기 퀴즈 |
-| 3 | 이름의 마음 일기 | 로그인한 학생 이름으로 쓰는 3분 마음 일기 |
+| 1 | 뚱이와 마음을 잇는 말 | 장대공원의 두 친구를 생각하며 고르는 2~3분 선택 모험 |
+| 2 | 루미와 이야기 되짚기 | 2~3분 픽셀 러너 + 이야기 퀴즈 |
+| 3 | 책 속 보물, 나의 보물 | 책 속 보물과 나의 보물을 쓰는 2~3분 글쓰기 |
 
 ## 화면
 
@@ -63,9 +63,16 @@ npm run dev
 저장소는 `DATA_BACKEND`로 못 박을 수 있다(`local`·`sheets`). 비워 두면 시트 값이 모두
 있을 때 시트, 아니면 파일로 동작하므로 교실용 `npm run dev`는 설정 없이 그대로 쓰면 된다.
 
-## 수업 내용 바꾸기
+## 수업 내용과 자산
 
-`src/content/book.ts` 파일 하나만 고치면 됩니다. 책 정보·줄거리, 미션 제목, 러너 퀴즈, 선택 모험 장면, 글쓰기 활동이 모두 이 파일에 있습니다.
+세 게임의 제목·문항·장면·글쓰기 안내는 [`src/content/book.ts`](/Users/user/task/reading-class/src/content/book.ts)에 있습니다.
+콘텐츠 호환 표식은 [`src/content/lesson-version.ts`](/Users/user/task/reading-class/src/content/lesson-version.ts), 결과 타입과 현재 버전 집계는
+[`src/lib/types.ts`](/Users/user/task/reading-class/src/lib/types.ts), 장면 자산 연결 여부는
+[`src/content/scene-assets.ts`](/Users/user/task/reading-class/src/content/scene-assets.ts)에서 관리합니다.
+
+새 장면 래스터 이미지는 원문과 참고 자료를 확인하기 전까지 보류합니다. 이미지 제작이 승인되면
+[`docs/game-image-prompts.md`](/Users/user/task/reading-class/docs/game-image-prompts.md)의 프롬프트와 `imagegen` 작업 흐름을 사용합니다.
+현재 제공된 요약만으로는 실제 대사, 갈등 원인, 고문서 문구·세부 내용, 보물의 정체를 확정할 수 없습니다.
 
 ## 디자인
 

@@ -5,11 +5,12 @@ import { IconArrow, IconArrowDown, IconArrowUp, IconBoss, IconCheck, IconMute, I
 import { Button } from "@/components/ui/button";
 import type { RunnerQuestion } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { advanceRunnerClock, seconds, startRunnerClock, type RunnerClockState } from "./runner-clock";
 
 /**
  * 미션 2: 2D 횡스크롤 러너 (루미 달리기)
  * - 하트/사망 없음: 장애물에 부딪히면 잠깐 휘청이고 점수만 조금 잃는다.
- * - 제한 시간이 끝나면 푼 문제 수와 관계없이 자동으로 골인한다.
+ * - 달리기 시간이 끝나도 남은 이야기 퀴즈를 차례로 풀고 골인한다.
  * - 문제 수 = 단계 수. 마지막 문제에서 보스가 등장한다.
  * - 캐릭터 스프라이트는 /images/runner/rumi.json 매니페스트를 읽어 그린다.
  */
@@ -22,6 +23,16 @@ export type RunnerResult = {
   timeSec: number;
   coins: number;
   endedBy: "questions" | "time";
+  activeRunSec: number;
+  answers: Array<{
+    questionId: string;
+    question: string;
+    chosenIndex: number;
+    chosenText: string;
+    answerIndex: number;
+    correct: boolean;
+    explain?: string;
+  }>;
 };
 
 type Props = {
@@ -295,7 +306,11 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], du
   let quizCount = 0;
   let currentAnswered = false;
   let startTime = 0;
-  let lastQuizTime = 0;
+  let lastQuizActiveMs = 0;
+  let clock: RunnerClockState | null = null;
+  let budgetExpired = false;
+  let hidden = false;
+  const answers: RunnerResult["answers"] = [];
   let lastTime = 0;
   let raf = 0;
   let hudTimer = 0;
@@ -578,11 +593,11 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], du
     if (cleared) { by -= clearAnim * 0.35; bx += clearAnim * 0.25; }
     if (images.boss) c.drawImage(images.boss, bx, by, 250, 250);
     else { c.fillStyle = "#7c3aed"; c.fillRect(bx + 40, by + 40, 170, 170); }
-    drawBubble(bx, by, cleared ? "으악, 다음에 보자!" : "마지막 문제다! 각오해라, 루미!");
+    drawBubble(bx, by, cleared ? "으악, 다음에 보자!" : "마지막 이야기 퀴즈다!");
   }
 
   function pushHud() {
-    const elapsed = startTime ? performance.now() - startTime : 0;
+    const elapsed = clock?.activeMs ?? 0;
     hooks.setHud({
       score: Math.floor(score),
       stage: Math.min(quizCount + 1, total),
@@ -593,7 +608,7 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], du
 
   function maybeOpenQuiz() {
     if (quizCount >= total) return;
-    const elapsed = performance.now() - lastQuizTime;
+    const elapsed = (clock?.activeMs ?? 0) - lastQuizActiveMs;
     const due = quizCount === 0 ? elapsed > FIRST_QUIZ_DELAY : elapsed > QUIZ_INTERVAL;
     if (!due) return;
     paused = true;
@@ -682,16 +697,30 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], du
 
   function loop(ts: number) {
     if (!running || destroyed) return;
-    const dt = Math.min(50, ts - lastTime);
+    if (hidden || document.hidden) {
+      lastTime = ts;
+      if (running) raf = requestAnimationFrame(loop);
+      return;
+    }
+    clock = clock ? advanceRunnerClock(clock, ts, !paused && !cleared) : clock;
+    const dt = Math.min(50, Math.max(0, ts - lastTime));
     lastTime = ts;
+    if (!paused && !cleared && clock && clock.activeMs >= durationMs) {
+      budgetExpired = true;
+      paused = true;
+      keys.down = false;
+      hooks.setQuiz({ index: quizCount, question: questions[quizCount], isBoss: quizCount === total - 1, answered: null });
+      hooks.setPhase("quiz");
+    }
     if (!paused && !cleared) maybeOpenQuiz();
     render(dt);
-    if (!paused && running) raf = requestAnimationFrame(loop);
+    if (running) raf = requestAnimationFrame(loop);
   }
 
   function finish(endedBy: RunnerResult["endedBy"]) {
     if (finished) return;
     finished = true;
+    if (clock) clock = advanceRunnerClock(clock, performance.now(), false);
     running = false;
     paused = false;
     cancelAnimationFrame(raf);
@@ -705,9 +734,11 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], du
       correct: correctCount,
       answered: Math.min(total, quizCount + (currentAnswered ? 1 : 0)),
       total,
-      timeSec: Math.min(durationSec, Math.max(0, Math.round((performance.now() - startTime) / 1000))),
+      timeSec: seconds(clock?.totalMs ?? 0),
       coins: coinsCollected,
       endedBy,
+      activeRunSec: Math.min(durationSec, seconds(clock?.activeMs ?? 0)),
+      answers: [...answers],
     });
   }
 
@@ -716,10 +747,12 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], du
     ensureAudio();
     running = true; paused = false; cleared = false; finished = false; bossMode = false;
     gameSpeed = 4; score = 0; coinsCollected = 0; correctCount = 0; quizCount = 0; currentAnswered = false;
+    clock = startRunnerClock(performance.now());
+    lastQuizActiveMs = 0;
+    budgetExpired = false; hidden = false; answers.length = 0;
     obstacles = []; coins = []; particles = []; obstacleTimer = 0; coinTimer = 0; bossT = 0; clearAnim = 0; keys.down = false;
     player.reset();
     startTime = performance.now();
-    lastQuizTime = startTime;
     lastTime = startTime;
     hooks.setBossVisible(false);
     hooks.setQuiz(null);
@@ -729,10 +762,29 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], du
     window.clearInterval(hudTimer);
     hudTimer = window.setInterval(() => {
       pushHud();
-      if (performance.now() - startTime >= durationMs) finish(cleared ? "questions" : "time");
+      if (!paused && !cleared && clock && clock.activeMs >= durationMs) {
+        budgetExpired = true;
+        paused = true;
+        keys.down = false;
+        if (quizCount < total) {
+          hooks.setQuiz({ index: quizCount, question: questions[quizCount], isBoss: quizCount === total - 1, answered: null });
+          hooks.setPhase("quiz");
+        }
+      }
     }, 250);
     raf = requestAnimationFrame(loop);
   }
+
+  function onVisibilityChange() {
+    hidden = document.hidden;
+    if (clock) clock = advanceRunnerClock(clock, performance.now(), false);
+    lastTime = performance.now();
+    if (!hidden && running) {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(loop);
+    }
+  }
+  document.addEventListener("visibilitychange", onVisibilityChange);
 
   function answer(index: number) {
     if (!paused || cleared || currentAnswered || quizCount >= total) return;
@@ -742,14 +794,22 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], du
     if (correct) { score += SCORE.quizCorrect; correctCount += 1; playSound("correct"); }
     else playSound("hit");
     hooks.setQuiz((prev) => (prev && prev.answered === null ? { ...prev, answered: { chosen: index, correct } } : prev));
+    answers.push({
+      questionId: q.id ?? `runner-${quizCount + 1}`,
+      question: q.q,
+      chosenIndex: index,
+      chosenText: q.options[index] ?? "",
+      answerIndex: q.answer,
+      correct,
+      ...(q.explain ? { explain: q.explain } : {}),
+    });
   }
 
   function resume() {
-    if (!paused || !running) return;
+    if (!paused || !running || !currentAnswered) return;
     quizCount += 1;
     currentAnswered = false;
-    lastQuizTime = performance.now();
-    paused = false;
+    lastQuizActiveMs = clock?.activeMs ?? lastQuizActiveMs;
     hooks.setQuiz(null);
     if (quizCount >= total) {
       cleared = true;
@@ -758,7 +818,15 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], du
       hooks.setBossVisible(false);
       hooks.setPhase("clear");
       hooks.pushFeedback("골인!", "good");
+      finish(budgetExpired ? "time" : "questions");
+      return;
+    } else if (budgetExpired) {
+      paused = true;
+      hooks.setQuiz({ index: quizCount, question: questions[quizCount], isBoss: quizCount === total - 1, answered: null });
+      hooks.setPhase("quiz");
+      return;
     } else {
+      paused = false;
       if (quizCount === total - 1) {
         bossMode = true;
         bossT = 0;
@@ -771,7 +839,6 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], du
     }
     pushHud();
     lastTime = performance.now();
-    raf = requestAnimationFrame(loop);
   }
 
   return {
@@ -791,6 +858,7 @@ function createEngine(canvas: HTMLCanvasElement, questions: RunnerQuestion[], du
       running = false;
       cancelAnimationFrame(raf);
       window.clearInterval(hudTimer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       stopMusic();
       if (audio) void audio.close().catch(() => undefined);
     },
@@ -932,7 +1000,7 @@ export function RunnerGame({ questions, durationSec = 120, missionNumber = 2, on
 
         {bossVisible && phase === "running" && (
           <div className="pointer-events-none absolute top-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border-[2.5px] border-ink bg-candy-lilac px-4 py-1.5 font-heading text-sm whitespace-nowrap text-ink shadow-[3px_3px_0_0_var(--ink)] animate-in slide-in-from-top-2">
-            <IconBoss className="size-5" /> 보스 등장! 마지막 문제를 맞혀요
+            <IconBoss className="size-5" /> 마지막 이야기 퀴즈를 풀어요
           </div>
         )}
 
@@ -940,9 +1008,9 @@ export function RunnerGame({ questions, durationSec = 120, missionNumber = 2, on
           <div className="absolute inset-0 grid place-items-center overflow-y-auto bg-ink/55 p-3">
             <div className="my-auto w-full max-w-md rounded-3xl bg-card p-4 text-center sticker candy-pop sm:p-6">
               <p className="font-heading text-sm text-primary-strong">미션 {missionNumber}</p>
-              <h2 className="mt-0.5 font-heading text-2xl sm:text-3xl">루미와 함께 달려요</h2>
-              <p className="mt-1.5 text-sm text-muted-foreground sm:mt-2 sm:text-base">
-                {durationSec / 60}분 동안 달리며 퀴즈를 풀어요. 문제를 다 풀지 못해도 시간이 되면 골인!
+              <h2 className="mt-0.5 font-heading text-2xl sm:text-3xl">루미와 이야기 되짚기</h2>
+            <p className="mt-1.5 text-sm text-muted-foreground sm:mt-2 sm:text-base">
+                {durationSec / 60}분 동안 달리며 이야기 퀴즈를 풀어요. 시간이 끝나도 남은 문제를 풀고 골인해요.
               </p>
               <div className="mt-3 hidden flex-wrap justify-center gap-2 text-xs text-muted-foreground sm:flex">
                 <span className="rounded-full bg-candy-cream px-2.5 py-1 font-medium">화면 터치 · Space = 점프 (두 번이면 2단 점프)</span>
@@ -1010,14 +1078,14 @@ function QuizOverlay({
       <div className="max-h-full w-full max-w-xl overflow-y-auto rounded-3xl bg-card p-4 text-card-foreground sticker candy-pop sm:p-6">
         <div className="flex items-center gap-2">
           <span className={cn("rounded-full px-3.5 py-1 font-heading text-sm", isBoss ? "bg-candy-lilac text-ink sticker-xs" : "bg-candy-pink text-ink sticker-xs")}>
-            {isBoss ? "보스 문제!" : `문제 ${index + 1}`}
+            {isBoss ? "마지막 문제!" : `문제 ${index + 1}`}
           </span>
           <span className="text-sm text-muted-foreground">
             {index + 1} / {total}
           </span>
         </div>
         <p className="mt-3 font-heading text-xl leading-snug sm:text-2xl">{question.q}</p>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        <div className="mt-4 grid gap-2">
           {question.options.map((option, i) => {
             const state = !answered ? "idle" : i === question.answer ? "correct" : i === answered.chosen ? "wrong" : "muted";
             return (

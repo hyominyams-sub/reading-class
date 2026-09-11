@@ -39,6 +39,8 @@ const HEADERS = [
 const COL_ID = 1;
 const COL_NAME = 2;
 const COL_JSON = 10;
+const CURRENT_CONTENT_VERSION = 'reading-class-2026-09-v2';
+const CURRENT_SCHEMA_VERSION = 2;
 
 /* ------------------------------------------------------------------ 진입점 */
 
@@ -124,14 +126,27 @@ function displayCells_(record) {
   const m3 = m['3'] || null;
   const d1 = (m1 && m1.details) || {};
   const d3 = (m3 && m3.details) || {};
+  const current1 = isCurrentResult_(m1);
+  const current2 = isCurrentResult_(m2);
+  const current3 = isCurrentResult_(m3);
+  const firstTry = typeof d1.firstTryCorrect === 'number' ? d1.firstTryCorrect : '';
+  const scenes = typeof d1.decisionScenes === 'number' ? d1.decisionScenes : '';
   return [
     m1 ? m1.score : '',
-    m1 && d1.total ? d1.correct + '/' + d1.total : '',
+    current1 && scenes !== '' ? firstTry + '/' + scenes : (m1 ? '이전 활동' : ''),
     m2 ? m2.score : '',
     m3 ? d3.chars || '' : '',
     m3 ? d3.text || '' : '',
-    [m1, m2, m3].filter(Boolean).length,
+    [current1, current2, current3].filter(Boolean).length,
   ];
+}
+
+function isCurrentResult_(result) {
+  if (!result) return false;
+  const details = result.details || {};
+  const contentVersion = details.contentVersion || result.contentVersion;
+  const schemaVersion = details.schemaVersion || result.schemaVersion;
+  return contentVersion === CURRENT_CONTENT_VERSION && schemaVersion === CURRENT_SCHEMA_VERSION;
 }
 
 function rowValues_(record) {

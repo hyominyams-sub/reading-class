@@ -12,7 +12,7 @@ export function Mission3() {
   const howTo = [
     "마음에 남은 장면 하나를 골라요.",
     "그때 내 마음에 어울리는 감정 낱말을 1~3개 골라요.",
-    `3분 동안 내 마음을 써요. 공백을 빼고 ${WRITING.minChars}자 이상이면 ${isGuest ? "완성할" : "제출할"} 수 있어요.`,
+    `생각한 보물과 소중한 까닭을 짧게 써요. 공백을 빼고 ${WRITING.minChars}자 이상이면 ${isGuest ? "완성할" : "제출할"} 수 있어요.`,
   ];
   return (
     <StudentGate>
@@ -26,7 +26,7 @@ export function Mission3() {
           return (
             <div className="rounded-xl bg-muted/70 p-4">
               <p className="text-xs text-muted-foreground">
-                {d.sceneLabel} · {d.who}의 일기 · {d.chars}자
+                {d.sceneLabel} · {d.chars}자
               </p>
               <p className="mt-2 line-clamp-4 leading-relaxed whitespace-pre-wrap">{d.text}</p>
             </div>

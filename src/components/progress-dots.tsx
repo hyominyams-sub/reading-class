@@ -1,6 +1,6 @@
 import { IconCheck } from "@/components/candy-icons";
 import { cn } from "@/lib/utils";
-import { MISSION_IDS, type StudentRecord } from "@/lib/types";
+import { currentMissionResult, MISSION_IDS, type StudentRecord } from "@/lib/types";
 
 export function ProgressDots({
   student,
@@ -16,7 +16,7 @@ export function ProgressDots({
   return (
     <div className={cn("flex items-center gap-1.5", className)} aria-label="미션 진행도">
       {MISSION_IDS.map((id) => {
-        const done = Boolean(student.missions[id]);
+        const done = Boolean(currentMissionResult(student, id));
         return (
           <span
             key={id}

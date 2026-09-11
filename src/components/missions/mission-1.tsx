@@ -7,8 +7,8 @@ import { ADVENTURE } from "@/content/book";
 
 const HOW_TO = [
   "그림책 속 장면을 천천히 살펴봐요.",
-  "뚱이가 되어 나라면 어떻게 할지 골라요.",
-  "다른 선택을 해도 괜찮아요. 까닭을 읽고 다시 생각해 봐요.",
+  "안내자 뚱이와 함께 장면에 어울리는 말을 골라요.",
+  "선택한 말의 뜻을 읽고, 필요하면 다시 골라요.",
 ];
 
 export function Mission1() {
@@ -21,18 +21,42 @@ export function Mission1() {
         summary={(outcome) => {
           const d = outcome.details as Partial<AdventureResult> | undefined;
           if (!d) return null;
+          const decisions = Array.isArray(d.decisions) ? d.decisions : [];
           return (
-            <dl className="grid grid-cols-2 gap-2 text-center">
-              {[
-                ["한 번에 고른 선택", `${d.firstTryCorrect ?? 0} / ${d.decisionScenes ?? 0}`],
-                ["다시 생각한 횟수", `${d.wrongCount ?? 0}번`],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-xl bg-muted/70 p-3">
-                  <dt className="text-xs text-muted-foreground">{label}</dt>
-                  <dd className="mt-1 text-lg font-bold tabular-nums">{value}</dd>
+            <div className="space-y-3">
+              <dl className="grid grid-cols-2 gap-2 text-center">
+                {[
+                  ["살펴본 장면", `${d.decisionScenes ?? 0}곳`],
+                  ["다시 고른 횟수", `${d.wrongCount ?? 0}번`],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-xl bg-muted/70 p-3">
+                    <dt className="text-xs text-muted-foreground">{label}</dt>
+                    <dd className="mt-1 text-lg font-bold tabular-nums">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              {decisions.length > 0 && (
+                <div className="space-y-2">
+                  <h2 className="font-heading text-lg">내가 고른 말</h2>
+                  {decisions.map((decision) => (
+                    <article key={decision.sceneId} className="rounded-xl bg-candy-cream p-3 text-sm">
+                      <p className="font-semibold">{decision.sceneTitle}</p>
+                      <p className="mt-1">
+                        {decision.firstChoiceText === decision.finalChoiceText ? (
+                          <>“{decision.finalChoiceText}”</>
+                        ) : (
+                          <>
+                            처음: “{decision.firstChoiceText}”<br />
+                            다시 고른 말: “{decision.finalChoiceText}”
+                          </>
+                        )}
+                      </p>
+                      <p className="mt-1 leading-relaxed text-muted-foreground">{decision.feedback}</p>
+                    </article>
+                  ))}
                 </div>
-              ))}
-            </dl>
+              )}
+            </div>
           );
         }}
       >

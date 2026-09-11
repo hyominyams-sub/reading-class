@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { IconArrow, IconClock, IconMedal, IconPodium, IconRedo, IconSparkle } from "@/components/candy-icons";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { SceneIllustration } from "@/components/illustrations/scene";
+import { hasSceneIllustration } from "@/content/scene-assets";
 import { QrScanButton } from "@/components/qr-scan";
 import { useStudent } from "@/lib/student-context";
 import { BOOK, MISSIONS, missionTitle } from "@/content/book";
-import { MISSION_IDS, type MissionId, type SceneKey } from "@/lib/types";
+import { CURRENT_CONTENT_VERSION, CURRENT_SCHEMA_VERSION } from "@/content/lesson-version";
+import { currentMissionResult, MISSION_IDS, type MissionId, type SceneKey } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export type CompleteFn = (score: number, details?: Record<string, unknown>) => void;
@@ -34,35 +36,72 @@ export function MissionFrame({ mission, scene, howTo, summary, children }: Props
   const [phase, setPhase] = useState<"intro" | "play" | "done">("intro");
   const [outcome, setOutcome] = useState<MissionOutcome | null>(null);
   const [runKey, setRunKey] = useState(0);
+  const runToken = useRef(0);
+  const completedToken = useRef<number | null>(null);
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
   const info = MISSIONS[mission];
   const title = missionTitle(mission, mode === "student" ? student?.name : undefined);
-  const previous = student?.missions[mission];
+  const previous = student ? currentMissionResult(student, mission) : undefined;
 
+  const renderToken = runToken.current;
   const handleComplete: CompleteFn = async (score, details) => {
+    const token = renderToken;
+    if (completedToken.current === token) return;
+    completedToken.current = token;
+    const versionedDetails = {
+      ...(details ?? {}),
+      contentVersion: CURRENT_CONTENT_VERSION,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+    };
     setPhase("done");
-    setOutcome({ score, details, saved: false });
+    setOutcome({ score, details: versionedDetails, saved: false });
+    savingRef.current = true;
+    setSaving(true);
     try {
-      await complete(mission, score, details);
-      setOutcome({ score, details, saved: true });
+      await complete(mission, score, versionedDetails);
+      if (token !== runToken.current) return;
+      setOutcome({ score, details: versionedDetails, saved: true });
     } catch (err) {
-      setOutcome({ score, details, saved: false, error: err instanceof Error ? err.message : "기록 저장에 실패했어요." });
+      if (token !== runToken.current) return;
+      setOutcome({ score, details: versionedDetails, saved: false, error: err instanceof Error ? err.message : "기록 저장에 실패했어요." });
+    } finally {
+      if (token === runToken.current) {
+        savingRef.current = false;
+        setSaving(false);
+      }
     }
   };
 
   const retrySave = async () => {
     if (!outcome) return;
-    setOutcome({ ...outcome, error: undefined });
+    if (saving || savingRef.current) return;
+    const token = runToken.current;
+    savingRef.current = true;
+    setSaving(true);
+    setOutcome({ ...outcome, error: undefined, saved: false });
     try {
       await complete(mission, outcome.score, outcome.details);
-      setOutcome({ ...outcome, saved: true, error: undefined });
+      if (token !== runToken.current) return;
+      setOutcome((current) => current ? { ...current, saved: true, error: undefined } : current);
     } catch (err) {
-      setOutcome({ ...outcome, error: err instanceof Error ? err.message : "기록 저장에 실패했어요." });
+      if (token !== runToken.current) return;
+      setOutcome((current) => current ? { ...current, error: err instanceof Error ? err.message : "기록 저장에 실패했어요." } : current);
+    } finally {
+      if (token === runToken.current) {
+        savingRef.current = false;
+        setSaving(false);
+      }
     }
   };
 
   const start = () => {
+    runToken.current += 1;
+    completedToken.current = null;
+    savingRef.current = false;
     setRunKey((k) => k + 1);
     setOutcome(null);
+    setSaving(false);
     setPhase("play");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -76,7 +115,9 @@ export function MissionFrame({ mission, scene, howTo, summary, children }: Props
   }
 
   if (phase === "done" && outcome) {
-    const remaining = MISSION_IDS.filter((id) => id !== mission && !student?.missions[id]);
+    const remaining = outcome.saved
+      ? MISSION_IDS.filter((id) => id !== mission && (!student || !currentMissionResult(student, id)))
+      : [];
     const next = remaining[0] ?? null;
     return (
       <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-12">
@@ -86,10 +127,17 @@ export function MissionFrame({ mission, scene, howTo, summary, children }: Props
           </div>
           <h1 className="mt-5 font-heading text-4xl">미션 {mission} 완료!</h1>
           <p className="mt-2 text-lg font-medium text-muted-foreground">{title}</p>
-          <div className="mt-6 inline-flex items-baseline gap-1 rounded-2xl bg-candy-yellow px-7 py-3 text-ink sticker-sm tilt-r">
-            <span className="font-heading text-5xl tabular-nums">{outcome.score}</span>
-            <span className="font-heading text-xl">점</span>
-          </div>
+          {mission === 3 ? (
+            <div className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-candy-yellow px-6 py-3 text-ink sticker-sm tilt-r">
+              <IconSparkle className="size-6" />
+              <span className="font-heading text-2xl">{outcome.saved ? "글을 저장했어요" : "글쓰기 완료"}</span>
+            </div>
+          ) : (
+            <div className="mt-6 inline-flex items-baseline gap-1 rounded-2xl bg-candy-yellow px-7 py-3 text-ink sticker-sm tilt-r">
+              <span className="font-heading text-5xl tabular-nums">{outcome.score}</span>
+              <span className="font-heading text-xl">점</span>
+            </div>
+          )}
           {summary && <div className="mt-6 text-left">{summary(outcome)}</div>}
           {!outcome.saved && !outcome.error && (
             <p className="mt-6 inline-flex items-center gap-2 rounded-full bg-candy-cream px-4 py-2 font-medium text-muted-foreground sticker-xs">
@@ -103,13 +151,17 @@ export function MissionFrame({ mission, scene, howTo, summary, children }: Props
                 <span aria-hidden className="grid size-6 shrink-0 place-items-center rounded-full bg-destructive text-sm font-bold text-white">!</span>
                 {outcome.error}
               </p>
-              <Button variant="outline" size="sm" onClick={retrySave}>
-                다시 저장하기
+              <Button variant="outline" size="sm" onClick={retrySave} disabled={saving}>
+                {saving ? "저장하는 중…" : "다시 저장하기"}
               </Button>
             </div>
           )}
           <div className="mt-8 flex flex-col gap-3">
-            {next && mode === "guest" ? (
+            {!outcome.saved ? (
+              <p className="rounded-2xl bg-candy-cream px-4 py-3 leading-relaxed text-muted-foreground">
+                기록을 저장한 뒤 다음 활동을 선택할 수 있어요.
+              </p>
+            ) : next && mode === "guest" ? (
               <Link href={`/mission/${next}`} className={cn(buttonVariants({ size: "xl" }))}>
                 다음 게임 하기
                 <IconArrow data-icon="inline-end" />
@@ -152,9 +204,11 @@ export function MissionFrame({ mission, scene, howTo, summary, children }: Props
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:py-10">
       <div className="overflow-hidden rounded-3xl bg-card sticker animate-in fade-in">
-        <div className="aspect-[2/1] border-b-[3px] border-ink sm:aspect-[21/9]">
-          <SceneIllustration scene={scene} className="h-full w-full" />
-        </div>
+          {hasSceneIllustration(scene) && (
+            <div className="aspect-[2/1] border-b-[3px] border-ink sm:aspect-[21/9]">
+              <SceneIllustration scene={scene} className="h-full w-full" />
+            </div>
+          )}
         <div className="p-6 sm:p-8">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="rounded-full bg-candy-pink px-3.5 py-1 font-heading text-ink sticker-xs">미션 {mission}</span>
@@ -171,7 +225,7 @@ export function MissionFrame({ mission, scene, howTo, summary, children }: Props
             <div className="mt-4 flex items-start gap-2 rounded-2xl bg-candy-cream px-4 py-3 text-ink sticker-sm">
               <IconMedal className="mt-0.5 size-6 shrink-0" />
               <p>
-                이미 완료한 미션이에요 (점수 {previous.score}점). 다시 도전하면 새 기록으로 저장돼요.
+                {mission === 3 ? "이미 글을 남겼어요. 다시 쓰면 새 기록으로 저장돼요." : `이미 완료한 미션이에요 (점수 ${previous.score}점). 다시 도전하면 새 기록으로 저장돼요.`}
               </p>
             </div>
           )}

@@ -7,6 +7,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { MISSIONS, missionTitle } from "@/content/book";
 import {
   completedCount,
+  currentMissionResult,
+  isCurrentMissionResult,
   isCleared,
   MISSION_IDS,
   nextMission,
@@ -23,7 +25,7 @@ import { cn } from "@/lib/utils";
  */
 
 /* 각 활동이 저장하는 details 모양 (mission-1/2/3의 result와 같음) */
-type RunnerDetails = { correct?: number; answered?: number; total?: number; timeSec?: number; coins?: number };
+type RunnerDetails = { correct?: number; answered?: number; total?: number; timeSec?: number; activeRunSec?: number; coins?: number; answers?: Array<{ correct?: boolean }> };
 type AdventureDetails = { firstTryCorrect?: number; decisionScenes?: number; wrongCount?: number };
 type WritingDetails = {
   sceneLabel?: string;
@@ -56,10 +58,13 @@ function statsOf(id: MissionId, result: MissionResult): { label: string; value: 
     ];
   }
   if (id === 2) {
+    const answerRows = Array.isArray(d.answers) ? d.answers : [];
+    const answered = d.answered ?? answerRows.length;
+    const correct = d.correct ?? answerRows.filter((answer) => answer.correct).length;
     return [
-      { label: "푼 문제", value: `${d.answered ?? 0}/${d.total ?? 0}` },
-      { label: "퀴즈 정답", value: `${d.correct ?? 0}개` },
-      { label: "걸린 시간", value: `${d.timeSec ?? 0}초` },
+      { label: "푼 문제", value: `${answered}/${d.total ?? answerRows.length}` },
+      { label: "맞힌 문제", value: `${correct}개` },
+      { label: "달린 시간", value: `${d.activeRunSec ?? d.timeSec ?? 0}초` },
     ];
   }
   return [
@@ -89,7 +94,7 @@ export function MyMissions({ student }: { student: StudentRecord }) {
         {/* 미션 3칸 진행 막대 — 칸 자체가 미션이라 한눈에 어디까지 왔는지 보인다 */}
         <ol className="mt-5 flex gap-2 sm:gap-3" aria-label={`${total}개 중 ${done}개 완료`}>
           {MISSION_IDS.map((id) => {
-            const finished = Boolean(student.missions[id]);
+            const finished = Boolean(currentMissionResult(student, id));
             return (
               <li
                 key={id}
@@ -165,12 +170,13 @@ function MyMissionCard({
   const Icon = MISSION_ICONS[info.icon];
   const title = missionTitle(id, studentName);
   const at = result ? timeLabel(result.completedAt) : "";
+  const isCurrent = Boolean(result && isCurrentMissionResult(result));
 
   return (
     <li
       className={cn(
         "rounded-3xl p-4 sticker sm:p-5",
-        result ? "bg-card" : isNext ? "bg-candy-yellow" : "bg-card/70",
+        result && isCurrent ? "bg-card" : isNext ? "bg-candy-yellow" : "bg-card/70",
       )}
     >
       <div className="flex items-start gap-3 sm:gap-4">
@@ -178,10 +184,10 @@ function MyMissionCard({
           className={cn(
             "grid size-14 shrink-0 place-items-center rounded-2xl border-[3px] border-ink text-ink sm:size-16",
             tilt,
-            result ? "bg-candy-mint" : MISSION_TONE[id],
+            result && isCurrent ? "bg-candy-mint" : MISSION_TONE[id],
           )}
         >
-          {result ? <IconCheck className="size-8" /> : <Icon className="size-9 sm:size-10" />}
+          {result && isCurrent ? <IconCheck className="size-8" /> : <Icon className="size-9 sm:size-10" />}
         </span>
 
         <div className="min-w-0 flex-1">
@@ -196,7 +202,7 @@ function MyMissionCard({
           <p className="mt-0.5 font-heading text-2xl leading-snug">{title}</p>
           {result ? (
             <p className="mt-1 text-sm font-medium text-muted-foreground">
-              {at && `${at} 완료`}
+              {isCurrent ? (at && `${at} 완료`) : "이전 활동 기록"}
               {result.attempts > 1 && ` · ${result.attempts}번 도전`}
             </p>
           ) : (
@@ -204,7 +210,7 @@ function MyMissionCard({
           )}
         </div>
 
-        {result && (
+        {result && isCurrent && id !== 3 && (
           <span className="shrink-0 rounded-2xl bg-candy-yellow px-3 py-1.5 text-center text-ink sticker-sm tilt-r sm:px-4 sm:py-2">
             <span className="font-heading text-3xl tabular-nums sm:text-4xl">{result.score}</span>
             <span className="font-heading text-base">점</span>
@@ -212,7 +218,7 @@ function MyMissionCard({
         )}
       </div>
 
-      {result && <MyResult id={id} result={result} />}
+      {result && <MyResult id={id} result={result} isCurrent={isCurrent} />}
 
       {/* 들어가는 문은 교실에 붙은 QR뿐 — 여기서는 어디로 가야 하는지만 알려 준다. */}
       <div className="mt-4 flex justify-end">
@@ -231,12 +237,13 @@ function MyMissionCard({
 }
 
 /** 완료한 미션의 실제 결과 — 점수만이 아니라 "내가 무엇을 했는지"를 보여 준다. */
-function MyResult({ id, result }: { id: MissionId; result: MissionResult }) {
+function MyResult({ id, result, isCurrent }: { id: MissionId; result: MissionResult; isCurrent: boolean }) {
   const stats = statsOf(id, result);
   const writing = id === 3 ? ((result.details ?? {}) as WritingDetails) : null;
 
   return (
-    <div className="mt-4">
+    <div className={cn("mt-4", !isCurrent && "rounded-2xl border-2 border-dashed border-ink/25 p-3")}>
+      {!isCurrent && <p className="mb-2 text-sm font-semibold text-muted-foreground">이전 활동에서 남긴 기록이에요.</p>}
       <dl className={cn("grid gap-2", stats.length === 3 ? "grid-cols-3" : "grid-cols-2")}>
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-2xl bg-candy-cream px-3 py-2.5 text-center sticker-xs">
