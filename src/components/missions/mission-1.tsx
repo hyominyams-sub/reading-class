@@ -7,8 +7,8 @@ import { ADVENTURE } from "@/content/book";
 
 const HOW_TO = [
   "그림책 속 장면을 천천히 살펴봐요.",
-  "안내자 뚱이와 함께 장면에 어울리는 말을 골라요.",
-  "선택한 말의 뜻을 읽고, 필요하면 다시 골라요.",
+  "안내자 뚱이와 함께 친구의 마음을 헤아리는 말을 골라요.",
+  "우리 반 친구 3명에게 응원을 전하고 숫자 버튼을 모두 눌러요.",
 ];
 
 export function Mission1() {
@@ -26,8 +26,9 @@ export function Mission1() {
             <div className="space-y-3">
               <dl className="grid grid-cols-2 gap-2 text-center">
                 {[
-                  ["살펴본 장면", `${d.decisionScenes ?? 0}곳`],
+                  ["말 고르기 활동", `${d.decisionScenes ?? 0}개`],
                   ["다시 고른 횟수", `${d.wrongCount ?? 0}번`],
+                  ["응원한 친구", `${d.encouragedFriends?.length ?? 0}명`],
                 ].map(([label, value]) => (
                   <div key={label} className="rounded-xl bg-muted/70 p-3">
                     <dt className="text-xs text-muted-foreground">{label}</dt>

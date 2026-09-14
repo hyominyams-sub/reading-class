@@ -1,6 +1,6 @@
 import Image from "next/image";
 import type { SceneKey } from "@/lib/types";
-import { hasSceneIllustration } from "@/content/scene-assets";
+import { hasSceneIllustration, LESSON_ILLUSTRATIONS } from "@/content/scene-assets";
 import { cn } from "@/lib/utils";
 
 /**
@@ -510,6 +510,8 @@ const SCENES: Record<SceneKey, { title: string; render: () => React.ReactNode }>
   "jangdae-conflict": { title: "장대공원에서 겪은 갈등", render: BookStack },
   "jangdae-listening": { title: "서로의 말 듣기", render: BookStack },
   "jangdae-reconciliation": { title: "장대공원에서의 화해", render: BookStack },
+  "friend-empathy": { title: "상대방의 마음 헤아리기", render: BookStack },
+  "friend-encouragement": { title: "친구에게 응원 전하기", render: BookStack },
   "boksagol-question": { title: "복사골의 고문서", render: BookStack },
   "ancient-document": { title: "고문서", render: BookStack },
   "beomam-story": { title: "범암마을의 1813년 대해일", render: BookStack },
@@ -541,6 +543,19 @@ const ART_H = 672;
 
 export function SceneIllustration({ scene, className }: { scene: SceneKey; className?: string }) {
   if (!hasSceneIllustration(scene)) return null;
+  const lessonArt = LESSON_ILLUSTRATIONS[scene];
+  if (lessonArt) {
+    return (
+      <Image
+        src={lessonArt.src}
+        alt={lessonArt.alt}
+        width={768}
+        height={1024}
+        sizes="(max-width: 640px) 100vw, 384px"
+        className={cn("object-contain", className ?? "h-auto w-full")}
+      />
+    );
+  }
   const def = SCENES[scene];
 
   if (SCENE_ART.has(scene)) {

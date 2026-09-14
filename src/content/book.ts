@@ -20,9 +20,9 @@ export const BOOK = {
 };
 
 export const MISSIONS: Record<MissionId, { title: string; subtitle: string; description: string; minutes: string; icon: "run" | "chat" | "pen" }> = {
-  1: { title: "뚱이와 마음을 잇는 말", subtitle: "생각 선택", description: "두 친구의 마음을 생각하며 건넬 말을 골라요.", minutes: "2분", icon: "chat" },
+  1: { title: "뚱이와 마음을 잇는 말", subtitle: "마음 나누기", description: "친구의 마음을 헤아리는 말을 고르고, 우리 반 친구에게 응원을 전해요.", minutes: "2분", icon: "chat" },
   2: { title: "루미와 이야기 되짚기", subtitle: "이야기 퀴즈 러너", description: "루미와 달리며 2장부터 4장까지의 인물과 사건을 떠올려요.", minutes: "2분", icon: "run" },
-  3: { title: "책 속 보물, 나의 보물", subtitle: "마음 글쓰기", description: "책 속에서 찾은 보물과 나에게 소중한 것을 짧게 써 봐요.", minutes: "3분", icon: "pen" },
+  3: { title: "나의 보물", subtitle: "마음 글쓰기", description: "나에게 소중한 보물과 그 까닭을 짧게 써 봐요.", minutes: "3분", icon: "pen" },
 };
 
 export function missionTitle(id: MissionId, studentName?: string): string {
@@ -37,40 +37,33 @@ export const RUNNER_QUIZ: RunnerQuestion[] = [
   { id: "jangdae-friends", scene: "jangdae-conflict", q: "장대공원에서 다툰 두 친구는 누구였나요?", options: ["태현이와 연우", "루미와 뚱이", "태현이와 루미"], answer: 0, explain: "2장 장대공원에서 태현이와 연우가 다투었어요." },
   { id: "beomam-event", scene: "beomam-story", q: "범암마을에는 어떤 일이 있었나요?", options: ["친구들이 화해했어요", "큰 해일이 일어났어요", "고문서를 읽었어요"], answer: 1, explain: "3장 범암마을에서는 큰 해일이 일어났어요." },
   { id: "boksagol-document", scene: "boksagol-question", q: "고문서가 등장하는 곳은 어디였나요?", options: ["장대공원", "범암마을", "복사골"], answer: 2, explain: "4장에서는 복사골에 등장하는 고문서를 살펴봐요." },
-  { id: "jangdae-reconciliation", scene: "jangdae-reconciliation", q: "다툰 두 친구는 나중에 어떻게 되었나요?", options: ["서로 만나지 않았어요", "화해했어요", "루미와 달렸어요"], answer: 1, explain: "태현이와 연우는 다툰 뒤 화해했어요." },
+  { id: "suncheon-natural-heritage", q: "다음 중 유네스코 세계자연유산은 무엇인가요?", options: ["낙안읍성", "선암사", "순천만습지"], answer: 2, explain: "정답은 순천만습지예요." },
 ];
 
 export const ADVENTURE: AdventureScene[] = [
   { id: "jangdae-conflict", title: "장대공원에서", scene: "jangdae-conflict", prompt: "장대공원에서 태현이와 연우가 다투었어요. 나라면 두 친구에게 어떤 말을 건넬까요?", text: ["태현이와 연우가 장대공원에서 다투었어요.", "두 친구의 이야기를 차례로 들어 보며 건넬 말을 골라 봐요."], choices: [
-    { id: "listen-first", text: "무슨 일인지 한 명씩 이야기해 줄래?", correct: true, next: "jangdae-listening", feedback: "한 명씩 이야기를 들으면 두 친구의 마음을 살펴볼 수 있어요." },
+    { id: "listen-first", text: "무슨 일인지 한 명씩 이야기해 줄래?", correct: true, next: "friend-empathy", feedback: "한 명씩 이야기를 들으면 두 친구의 마음을 살펴볼 수 있어요." },
     { id: "apologize-first", text: "먼저 서로 미안하다고 하면 되잖아.", correct: false, feedback: "미안하다는 말에 앞서 무슨 일이 있었는지 들어 볼 수 있어요." },
     { id: "find-first", text: "누가 먼저 시작했는지부터 말해 봐.", correct: false, feedback: "잘잘못을 가리기보다 두 친구의 이야기를 먼저 들어 볼 수 있어요." },
   ] },
-  { id: "jangdae-listening", title: "서로의 말 듣기", scene: "jangdae-listening", prompt: "친구가 자기 생각을 이야기한다면, 어떻게 들어 주면 좋을까요?", text: ["친구가 자기 생각을 이야기하는 모습을 떠올려요.", "연우의 이야기도 차례로 들어 볼 수 있어요."], choices: [
-    { id: "take-turns", text: "네 이야기 끝까지 들어 볼게.", correct: true, next: "jangdae-reconciliation", feedback: "끝까지 듣겠다고 말하면 친구가 마음 놓고 이야기할 수 있어요." },
-    { id: "listen-together", text: "연우 이야기까지 듣고 같이 생각해 보자.", correct: true, next: "jangdae-reconciliation", feedback: "두 친구의 이야기를 함께 들으면 서로를 더 잘 살필 수 있어요." },
-    { id: "assume", text: "나도 겪어 봐서 네 마음 다 알아.", correct: false, feedback: "비슷한 경험이 있어도 친구의 이야기를 먼저 들어 볼 수 있어요." },
+  { id: "friend-empathy", title: "상대방의 마음 헤아리기", scene: "friend-empathy", prompt: "상대의 마음을 헤아릴 수 있는 말은 무엇일까요?", text: ["친구가 덜덜 떨고 있어요."], choices: [
+    { id: "tease", text: "키도 크면서 겁쟁이구나?", correct: false, feedback: "겁쟁이라고 놀리면 친구의 마음이 더 힘들어질 수 있어요. 친구를 다독이는 말을 골라 봐요." },
+    { id: "dismiss", text: "그게 왜 떨릴 일이야?", correct: false, feedback: "나에게 괜찮은 일도 친구에게는 무서울 수 있어요. 친구의 마음을 헤아려 봐요." },
+    { id: "comfort", text: "괜찮아? 내가 다독여줄게!", correct: true, next: "friend-encouragement", feedback: "친구의 마음을 살피고 다독여 주면 친구가 안심할 수 있어요." },
   ] },
-  { id: "jangdae-reconciliation", title: "화해를 떠올리며", scene: "jangdae-reconciliation", prompt: "친구와 생각이 다를 때, 나라면 어떤 말을 건넬까요?", text: ["태현이와 연우가 장대공원에서 화해했어요.", "상대의 마음을 존중하는 말을 골라 봐요."], choices: [
-    { id: "respect", text: "다음에는 네 생각도 먼저 물어볼게.", correct: true, next: "jangdae-ending", feedback: "친구의 생각을 먼저 물으면 서로의 마음을 이해하는 데 도움이 돼요." },
-    { id: "share-listen", text: "내 생각도 말하고 네 이야기도 들어 볼게.", correct: true, next: "jangdae-ending", feedback: "내 생각을 전하고 친구의 말도 들으며 함께 대화할 수 있어요." },
-    { id: "decide-alone", text: "앞으로는 내가 하자는 대로 하면 되겠지?", correct: false, feedback: "한 사람의 생각만 따르기보다 서로의 생각을 나누어 봐요." },
-  ] },
-  { id: "jangdae-ending", title: "마음 잇기", scene: "jangdae-reconciliation", text: ["태현이와 연우가 화해한 장면을 떠올려 봐요.", "나도 친구의 이야기를 듣고 존중하는 말을 건넬 수 있어요."], ending: true },
+  { id: "friend-encouragement", title: "친구에게 응원 전하기", scene: "friend-encouragement", text: ["주변에 있는 우리 반 친구 3명에게 오늘 하루를 응원하는 말을 해주고 1, 2, 3번 버튼을 모두 눌러주세요."], encouragement: { count: 3, reminder: "활동을 하지 않고 1, 2, 3번을 누르면 자신을 속이는 일이에요." } },
 ];
 
 export const WRITING: WritingConfig = {
-  title: "책 속 보물, 나의 보물",
-  intro: "책 속에서 찾은 보물과 나에게 소중한 까닭을 한 편의 글로 써 보세요.",
+  title: "나의 보물",
+  intro: "나에게 소중한 보물을 떠올리고, 왜 소중한지 써 보세요.",
   prompt: "나에게 소중한 보물은 무엇인가요? 왜 소중한지도 써 봐요.",
   placeholder: "내가 생각한 보물은 …\n나에게 소중한 까닭은 …",
   experienceHint: "비슷한 경험이나 소식을 듣고 떠올린 생각을 한 문장 넣어도 좋아요.",
   scenes: [
-    { id: "beomam", label: "범암마을의 사건", who: "나", scene: "beomam-story", situation: "3장 범암마을의 1813년 대해일과 오늘날 태풍을 떠올려요.", hint: "기억에 남은 까닭과 내 생각을 써 보세요." },
-    { id: "document", label: "복사골의 고문서", who: "나", scene: "boksagol-question", situation: "4장 복사골의 고문서와 관련한 장면을 떠올려요.", hint: "그 장면에서 내가 찾은 보물을 생각해 보세요." },
-    { id: "treasure", label: "나의 보물", who: "나", scene: "treasure-reflection", situation: "책 속 보물과 나에게 소중한 보물을 이어 생각해요.", hint: "왜 소중한지 한 가지 까닭을 써 보세요." },
+    { id: "treasure", label: "나의 보물", who: "나", scene: "treasure-reflection", situation: "나에게 소중한 보물은 무엇인가요?", hint: "왜 소중한지 한 가지 까닭을 써 보세요." },
   ],
   feelings: ["궁금해요", "놀라워요", "걱정돼요", "따뜻해요", "고마워요", "소중해요"],
-  starters: ["내가 생각한 보물은", "나에게 소중한 까닭은", "그 장면을 떠올리면"],
+  starters: ["내가 생각한 보물은", "나에게 소중한 까닭은", "이 보물을 떠올리면"],
   minChars: 30,
 };

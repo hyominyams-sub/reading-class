@@ -10,15 +10,15 @@ export function Mission3() {
   const { student, mode } = useStudent();
   const isGuest = mode === "guest";
   const howTo = [
-    "마음에 남은 장면 하나를 골라요.",
-    "그때 내 마음에 어울리는 감정 낱말을 1~3개 골라요.",
+    "나에게 소중한 보물을 떠올려요.",
+    "보물을 떠올릴 때 내 마음에 어울리는 감정 낱말을 1~3개 골라요.",
     `생각한 보물과 소중한 까닭을 짧게 써요. 공백을 빼고 ${WRITING.minChars}자 이상이면 ${isGuest ? "완성할" : "제출할"} 수 있어요.`,
   ];
   return (
     <StudentGate>
       <MissionFrame
         mission={3}
-        scene="book"
+        scene="treasure-reflection"
         howTo={howTo}
         summary={(outcome) => {
           const d = outcome.details as Partial<WritingResult> | undefined;

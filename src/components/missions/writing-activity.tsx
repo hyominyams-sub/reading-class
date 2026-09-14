@@ -28,7 +28,7 @@ type Props = {
   onComplete: (result: WritingResult) => void;
 };
 
-const STEPS = ["장면 고르기", "마음 고르기", "글쓰기", "확인하기"];
+const STEPS = ["보물 떠올리기", "마음 고르기", "글쓰기", "확인하기"];
 function countChars(text: string) {
   return text.replace(/\s/g, "").length;
 }
@@ -128,7 +128,7 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
 
       {step === 0 && (
         <section className="animate-in fade-in">
-          <h1 className="font-heading text-3xl">어느 장면의 마음을 써 볼까요?</h1>
+          <h1 className="font-heading text-3xl">{config.title}</h1>
           <p className="mt-1 text-muted-foreground">{config.intro}</p>
           <div className="mt-4 grid gap-4">
             {config.scenes.map((s) => (
@@ -139,8 +139,8 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
                 className="group flex flex-col overflow-hidden rounded-2xl bg-card text-left sticker transition-colors hover:ring-primary sm:flex-row"
               >
                 {hasSceneIllustration(s.scene) && (
-                  <div className="aspect-[2/1] w-full sm:aspect-auto sm:w-56 sm:shrink-0">
-                    <SceneIllustration scene={s.scene} className="h-full w-full" />
+                  <div className="w-full bg-candy-cream sm:w-64 sm:shrink-0">
+                    <SceneIllustration scene={s.scene} className="max-h-80 w-full sm:max-h-none sm:h-auto" />
                   </div>
                 )}
                 <div className="flex flex-1 flex-col justify-center p-5">
@@ -148,7 +148,7 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
                   <p className="mt-0.5 text-xl font-bold">{s.label}</p>
                   <p className="mt-2 leading-relaxed text-muted-foreground">{s.situation}</p>
                   <span className="mt-3 inline-flex items-center gap-1 text-sm font-heading text-primary-strong">
-                    이 장면 고르기 <IconArrow className="size-4 transition-transform group-hover:translate-x-0.5" />
+                    마음 고르기 <IconArrow className="size-4 transition-transform group-hover:translate-x-0.5" />
                   </span>
                 </div>
               </button>
@@ -159,10 +159,10 @@ export function WritingActivity({ config, studentName, isGuest = false, onComple
 
       {step === 1 && scene && (
         <section className="animate-in fade-in">
-          <h1 className="font-heading text-3xl">그때 내 마음은 어땠을까요?</h1>
+          <h1 className="font-heading text-3xl">보물을 떠올리면 어떤 마음이 드나요?</h1>
           <p className="mt-1 text-muted-foreground">어울리는 감정 낱말을 1~3개 골라요.</p>
           <div className="mt-4 rounded-2xl bg-candy-cream px-4 py-3 text-sm leading-relaxed text-ink">
-            <span className="font-bold">장면 힌트</span> · {scene.hint}
+            <span className="font-bold">글쓰기 힌트</span> · {scene.hint}
           </div>
           <div className="mt-5 flex flex-wrap gap-2.5">
             {config.feelings.map((word) => {

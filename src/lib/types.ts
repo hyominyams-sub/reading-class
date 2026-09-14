@@ -72,6 +72,8 @@ export type SceneKey =
   | "jangdae-conflict"
   | "jangdae-listening"
   | "jangdae-reconciliation"
+  | "friend-empathy"
+  | "friend-encouragement"
   | "boksagol-question"
   | "ancient-document"
   | "beomam-story"
@@ -102,6 +104,7 @@ export type AdventureScene = {
   prompt?: string;
   text: string[];
   choices?: AdventureChoice[];
+  encouragement?: { count: number; reminder: string };
   ending?: boolean;
 };
 

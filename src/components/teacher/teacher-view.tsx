@@ -40,7 +40,8 @@ function missionSummary(student: StudentRecord, id: 1 | 2 | 3): string {
     const first = typeof d.firstTryCorrect === "number"
       ? d.firstTryCorrect
       : scenes.filter((scene) => scene && typeof scene === "object" && (scene as { firstChoiceIndex?: unknown }).firstChoiceIndex === (scene as { finalChoiceIndex?: unknown }).finalChoiceIndex).length;
-    if (total) return `선택한 장면 ${total}곳 · 첫 선택 ${first}/${total}`;
+    const encouraged = Array.isArray(d.encouragedFriends) ? ` · 친구 응원 ${d.encouragedFriends.length}명` : "";
+    if (total) return `말 고르기 ${total}개 · 첫 선택 ${first}/${total}${encouraged}`;
   }
   if (id === 2) {
     const answers = Array.isArray(d.answers) ? d.answers : [];
