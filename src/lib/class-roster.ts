@@ -1,6 +1,6 @@
 export const CLASS_ROSTER = [
   { number: 1, name: "강서현" },
-  { number: 2, name: "김수현" },
+  { number: 2, name: "강수현" },
   { number: 3, name: "김동욱" },
   { number: 4, name: "김채아" },
   { number: 5, name: "김태이" },
